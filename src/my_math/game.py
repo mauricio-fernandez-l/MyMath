@@ -178,8 +178,8 @@ class CountingGameView(BaseView):
         """Set up the counting game UI."""
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=0)  # Header
-        self.grid_rowconfigure(1, weight=2)  # Image area
-        self.grid_rowconfigure(2, weight=1)  # Answer area
+        self.grid_rowconfigure(1, weight=3)  # Image area (2/3 of remaining)
+        self.grid_rowconfigure(2, weight=0)  # Answer area (fixed height)
 
         # Header with back button and round info
         header = tk.Frame(self, bg="#f0f0f0")
@@ -199,19 +199,20 @@ class CountingGameView(BaseView):
         )
         self.back_btn.grid(row=0, column=0, sticky="w")
 
-        round_font = tkfont.Font(family="Arial", size=18, weight="bold")
-        self.round_label = tk.Label(
-            header, text="1 / 5", font=round_font, bg="#f0f0f0", fg="#2c3e50"
-        )
-        self.round_label.grid(row=0, column=1)
+        # Progress boxes frame
+        self.progress_frame = tk.Frame(header, bg="#f0f0f0")
+        self.progress_frame.grid(row=0, column=1)
+        self.progress_boxes: list[tk.Canvas] = []
 
         # Image display area
         self.image_frame = tk.Frame(self, bg="#ecf0f1")
-        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=40, pady=20)
+        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.image_frame.grid_rowconfigure(0, weight=1)
+        self.image_frame.grid_columnconfigure(0, weight=1)
 
-        # Answer buttons area
+        # Answer buttons area (centered)
         self.answer_frame = tk.Frame(self, bg="#f0f0f0")
-        self.answer_frame.grid(row=2, column=0, pady=30)
+        self.answer_frame.grid(row=2, column=0, pady=(10, 30))
 
     def _load_available_images(self) -> None:
         """Load list of available images from the images folder."""
@@ -227,7 +228,49 @@ class CountingGameView(BaseView):
         self._load_available_images()
         self.current_round = 0
         self.history = []
+        self._init_progress_boxes()
         self._next_round()
+
+    def _init_progress_boxes(self) -> None:
+        """Initialize the progress boxes."""
+        # Clear existing boxes
+        for box in self.progress_boxes:
+            box.destroy()
+        self.progress_boxes.clear()
+
+        # Create new boxes
+        total_rounds = self.config.game_rounds
+        box_size = 20
+        for i in range(total_rounds):
+            box = tk.Canvas(
+                self.progress_frame,
+                width=box_size,
+                height=box_size,
+                bg="#f0f0f0",
+                highlightthickness=0,
+            )
+            box.create_rectangle(
+                2, 2, box_size - 2, box_size - 2,
+                fill="#bdc3c7",  # Gray
+                outline="#95a5a6",
+                tags="box",
+            )
+            box.grid(row=0, column=i, padx=2)
+            self.progress_boxes.append(box)
+
+    def _update_progress_box(self, round_num: int, is_correct: bool) -> None:
+        """Update a progress box color based on answer correctness."""
+        if 0 < round_num <= len(self.progress_boxes):
+            box = self.progress_boxes[round_num - 1]
+            color = "#2ecc71" if is_correct else "#e74c3c"  # Green or Red
+            box.delete("box")
+            box_size = 20
+            box.create_rectangle(
+                2, 2, box_size - 2, box_size - 2,
+                fill=color,
+                outline="#27ae60" if is_correct else "#c0392b",
+                tags="box",
+            )
 
     def _next_round(self) -> None:
         """Set up the next round."""
@@ -237,9 +280,6 @@ class CountingGameView(BaseView):
         if self.current_round > total_rounds:
             self._show_results()
             return
-
-        # Update round label
-        self.round_label.config(text=f"{self.current_round} / {total_rounds}")
 
         # Clear previous images
         for widget in self.image_frame.winfo_children():
@@ -326,20 +366,32 @@ class CountingGameView(BaseView):
         """Calculate appropriate image size based on count and available space."""
         base_size = self.config.game_image_size
 
-        # Estimate how much space we need
-        # Each group is displayed in a row, max items in a row is 10
-        max_group = max(groups) if groups else count
+        # Get available frame dimensions
+        self.image_frame.update_idletasks()
+        frame_height = self.image_frame.winfo_height()
+        frame_width = self.image_frame.winfo_width()
+
+        if frame_height < 50:  # Frame not yet sized
+            frame_height = 400
+        if frame_width < 50:
+            frame_width = 800
+
         num_rows = len(groups) if groups else 1
+        max_cols = max(groups) if groups else count
 
-        # Reduce size for larger counts to fit on screen
-        if count > 20:
-            base_size = int(base_size * 0.5)
-        elif count > 10:
-            base_size = int(base_size * 0.7)
-        elif count > 5:
-            base_size = int(base_size * 0.85)
+        # Calculate max size that fits vertically (with padding)
+        vertical_padding = 10 * (num_rows + 1)  # pady between rows
+        max_height_per_image = (frame_height - vertical_padding) // num_rows if num_rows > 0 else base_size
 
-        return base_size
+        # Calculate max size that fits horizontally (with padding)
+        horizontal_padding = 6 * (max_cols + 1)  # padx between columns
+        max_width_per_image = (frame_width - horizontal_padding) // max_cols if max_cols > 0 else base_size
+
+        # Use the smaller of the two to ensure it fits
+        calculated_size = min(max_height_per_image, max_width_per_image, base_size)
+
+        # Ensure minimum size
+        return max(30, int(calculated_size * 0.9))  # 90% to leave some margin
 
     def _display_images(self, image_path: Path, count: int) -> None:
         """Display the specified image multiple times in educational groups."""
@@ -364,23 +416,23 @@ class CountingGameView(BaseView):
 
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-            # Create a frame to hold images
+            # Create a frame to hold images, centered in image_frame
             inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
-            inner_frame.place(relx=0.5, rely=0.5, anchor="center")
+            inner_frame.grid(row=0, column=0)  # Centered via grid config
 
             # Display images in groups (each group in a row)
             row_idx = 0
             for group_size in groups:
                 # Create a frame for this group/row
                 row_frame = tk.Frame(inner_frame, bg="#ecf0f1")
-                row_frame.grid(row=row_idx, column=0, pady=5)
+                row_frame.grid(row=row_idx, column=0, pady=3)
 
                 for col_idx in range(group_size):
                     photo = ImageTk.PhotoImage(img)
                     self.images.append(photo)  # Keep reference
 
                     label = tk.Label(row_frame, image=photo, bg="#ecf0f1")
-                    label.grid(row=0, column=col_idx, padx=3, pady=3)
+                    label.grid(row=0, column=col_idx, padx=2, pady=2)
 
                 row_idx += 1
 
@@ -395,7 +447,7 @@ class CountingGameView(BaseView):
         img_size = self._calculate_image_size(count, groups)
 
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
-        inner_frame.place(relx=0.5, rely=0.5, anchor="center")
+        inner_frame.grid(row=0, column=0)  # Centered via grid config
 
         colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
         color_idx = 0
@@ -404,7 +456,7 @@ class CountingGameView(BaseView):
         row_idx = 0
         for group_size in groups:
             row_frame = tk.Frame(inner_frame, bg="#ecf0f1")
-            row_frame.grid(row=row_idx, column=0, pady=5)
+            row_frame.grid(row=row_idx, column=0, pady=3)
 
             for col_idx in range(group_size):
                 canvas = tk.Canvas(
@@ -418,7 +470,7 @@ class CountingGameView(BaseView):
                 canvas.create_oval(
                     5, 5, img_size - 5, img_size - 5, fill=color, outline=""
                 )
-                canvas.grid(row=0, column=col_idx, padx=3, pady=3)
+                canvas.grid(row=0, column=col_idx, padx=2, pady=2)
                 color_idx += 1
 
             row_idx += 1
@@ -473,6 +525,9 @@ class CountingGameView(BaseView):
                 "is_correct": is_correct,
             }
         )
+
+        # Update progress box
+        self._update_progress_box(self.current_round, is_correct)
 
         # Disable all buttons
         for btn in self.answer_buttons:
@@ -597,11 +652,13 @@ class CountingResultsView(BaseView):
 
         result_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
-        for entry in self.history:
+        for idx, entry in enumerate(self.history):
             color = "#2ecc71" if entry["is_correct"] else "#e74c3c"
 
             frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
-            frame.pack(side="left", padx=10, pady=10)
+            row = idx // 5
+            col = idx % 5
+            frame.grid(row=row, column=col, padx=10, pady=10)
 
             # Show the correct answer
             label = tk.Label(
@@ -618,7 +675,7 @@ class CountingResultsView(BaseView):
                 small_font = tkfont.Font(family="Arial", size=12)
                 wrong_label = tk.Label(
                     frame,
-                    text=f"(du: {entry['player_answer']})",
+                    text=f"({entry['player_answer']})",
                     font=small_font,
                     bg=color,
                     fg="white",
@@ -645,8 +702,8 @@ class AdditionGameView(BaseView):
         """Set up the addition game UI."""
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=0)  # Header
-        self.grid_rowconfigure(1, weight=2)  # Image area
-        self.grid_rowconfigure(2, weight=1)  # Answer area
+        self.grid_rowconfigure(1, weight=3)  # Image area (2/3 of remaining)
+        self.grid_rowconfigure(2, weight=0)  # Answer area (fixed height)
 
         # Header with back button and round info
         header = tk.Frame(self, bg="#f0f0f0")
@@ -666,19 +723,20 @@ class AdditionGameView(BaseView):
         )
         self.back_btn.grid(row=0, column=0, sticky="w")
 
-        round_font = tkfont.Font(family="Arial", size=18, weight="bold")
-        self.round_label = tk.Label(
-            header, text="1 / 10", font=round_font, bg="#f0f0f0", fg="#2c3e50"
-        )
-        self.round_label.grid(row=0, column=1)
+        # Progress boxes frame
+        self.progress_frame = tk.Frame(header, bg="#f0f0f0")
+        self.progress_frame.grid(row=0, column=1)
+        self.progress_boxes: list[tk.Canvas] = []
 
         # Image display area
         self.image_frame = tk.Frame(self, bg="#ecf0f1")
-        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=40, pady=20)
+        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.image_frame.grid_rowconfigure(0, weight=1)
+        self.image_frame.grid_columnconfigure(0, weight=1)
 
-        # Answer buttons area
+        # Answer buttons area (centered)
         self.answer_frame = tk.Frame(self, bg="#f0f0f0")
-        self.answer_frame.grid(row=2, column=0, pady=30)
+        self.answer_frame.grid(row=2, column=0, pady=(10, 30))
 
     def _load_available_images(self) -> None:
         """Load list of available images from the images folder."""
@@ -694,7 +752,49 @@ class AdditionGameView(BaseView):
         self._load_available_images()
         self.current_round = 0
         self.history = []
+        self._init_progress_boxes()
         self._next_round()
+
+    def _init_progress_boxes(self) -> None:
+        """Initialize the progress boxes."""
+        # Clear existing boxes
+        for box in self.progress_boxes:
+            box.destroy()
+        self.progress_boxes.clear()
+
+        # Create new boxes
+        total_rounds = self.config.game_rounds
+        box_size = 20
+        for i in range(total_rounds):
+            box = tk.Canvas(
+                self.progress_frame,
+                width=box_size,
+                height=box_size,
+                bg="#f0f0f0",
+                highlightthickness=0,
+            )
+            box.create_rectangle(
+                2, 2, box_size - 2, box_size - 2,
+                fill="#bdc3c7",  # Gray
+                outline="#95a5a6",
+                tags="box",
+            )
+            box.grid(row=0, column=i, padx=2)
+            self.progress_boxes.append(box)
+
+    def _update_progress_box(self, round_num: int, is_correct: bool) -> None:
+        """Update a progress box color based on answer correctness."""
+        if 0 < round_num <= len(self.progress_boxes):
+            box = self.progress_boxes[round_num - 1]
+            color = "#2ecc71" if is_correct else "#e74c3c"  # Green or Red
+            box.delete("box")
+            box_size = 20
+            box.create_rectangle(
+                2, 2, box_size - 2, box_size - 2,
+                fill=color,
+                outline="#27ae60" if is_correct else "#c0392b",
+                tags="box",
+            )
 
     def _next_round(self) -> None:
         """Set up the next round."""
@@ -704,9 +804,6 @@ class AdditionGameView(BaseView):
         if self.current_round > total_rounds:
             self._show_results()
             return
-
-        # Update round label
-        self.round_label.config(text=f"{self.current_round} / {total_rounds}")
 
         # Clear previous content
         for widget in self.image_frame.winfo_children():
@@ -745,16 +842,35 @@ class AdditionGameView(BaseView):
         self.after(delay, self._create_answer_buttons)
 
     def _calculate_image_size(self, total_count: int) -> int:
-        """Calculate appropriate image size based on count."""
+        """Calculate appropriate image size based on count and available space."""
         base_size = self.config.game_image_size
 
-        if total_count > 15:
-            return int(base_size * 0.5)
-        elif total_count > 10:
-            return int(base_size * 0.7)
-        elif total_count > 6:
-            return int(base_size * 0.85)
-        return base_size
+        # Get available frame dimensions
+        self.image_frame.update_idletasks()
+        frame_height = self.image_frame.winfo_height()
+        frame_width = self.image_frame.winfo_width()
+
+        if frame_height < 50:  # Frame not yet sized
+            frame_height = 400
+        if frame_width < 50:
+            frame_width = 800
+
+        # For addition view: numbers on top row, images below
+        # Estimate: 2 rows max for images, need space for number labels (~80px) and plus/equals
+        available_height = frame_height - 100  # Reserve for number labels
+        max_rows = max(1, (max(self.num1, self.num2) + 4) // 5)  # Up to 5 per row
+        max_height_per_image = available_height // max(max_rows, 1)
+
+        # Width: need to fit both number groups + plus + equals + question
+        # Each group max 5 wide, plus symbols take ~200px
+        available_width = frame_width - 250  # Reserve for +, =, ?
+        max_width_per_image = available_width // 10  # 5 per group, 2 groups
+
+        # Use the smaller of the two to ensure it fits
+        calculated_size = min(max_height_per_image, max_width_per_image, base_size)
+
+        # Ensure minimum size
+        return max(30, int(calculated_size * 0.85))
 
     def _display_addition(self, image_path: Path) -> None:
         """Display the addition with two groups of images."""
@@ -773,12 +889,12 @@ class AdditionGameView(BaseView):
                 new_width = int(width * img_size / height)
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-            # Create main container
+            # Create main container centered via grid
             inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
-            inner_frame.place(relx=0.5, rely=0.5, anchor="center")
+            inner_frame.grid(row=0, column=0)  # Centered via grid config
 
-            number_font = tkfont.Font(family="Arial", size=48, weight="bold")
-            plus_font = tkfont.Font(family="Arial", size=36, weight="bold")
+            number_font = tkfont.Font(family="Arial", size=36, weight="bold")
+            plus_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
             # First number and its images
             col = 0
@@ -865,10 +981,10 @@ class AdditionGameView(BaseView):
         img_size = self._calculate_image_size(total_count)
 
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
-        inner_frame.place(relx=0.5, rely=0.5, anchor="center")
+        inner_frame.grid(row=0, column=0)  # Centered via grid config
 
-        number_font = tkfont.Font(family="Arial", size=48, weight="bold")
-        plus_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        number_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        plus_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
         colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
 
@@ -1013,6 +1129,9 @@ class AdditionGameView(BaseView):
             }
         )
 
+        # Update progress box
+        self._update_progress_box(self.current_round, is_correct)
+
         # Disable all buttons
         for btn in self.answer_buttons:
             btn.config(state="disabled", cursor="")
@@ -1136,11 +1255,13 @@ class AdditionResultsView(BaseView):
 
         result_font = tkfont.Font(family="Arial", size=20, weight="bold")
 
-        for entry in self.history:
+        for idx, entry in enumerate(self.history):
             color = "#2ecc71" if entry["is_correct"] else "#e74c3c"
 
             frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
-            frame.pack(side="left", padx=5, pady=10)
+            row = idx // 5
+            col = idx % 5
+            frame.grid(row=row, column=col, padx=5, pady=10)
 
             # Show the equation
             equation = f"{entry['num1']}+{entry['num2']}={entry['correct_answer']}"
