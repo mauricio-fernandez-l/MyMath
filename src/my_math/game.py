@@ -461,7 +461,10 @@ class CountingGameView(BaseView):
                     self.images.append(photo)  # Keep reference
 
                     label = tk.Label(row_frame, image=photo, bg="#ecf0f1")
-                    label.grid(row=0, column=col_idx, padx=2, pady=2)
+                    # Add extra padding after 5th image in groups of 10
+                    gap = self.config.game_group_gap
+                    padx_right = gap if (group_size == 10 and col_idx == 4) else 2
+                    label.grid(row=0, column=col_idx, padx=(2, padx_right), pady=2)
 
                 row_idx += 1
 
@@ -499,7 +502,10 @@ class CountingGameView(BaseView):
                 canvas.create_oval(
                     5, 5, img_size - 5, img_size - 5, fill=color, outline=""
                 )
-                canvas.grid(row=0, column=col_idx, padx=2, pady=2)
+                # Add extra padding after 5th shape in groups of 10
+                gap = self.config.game_group_gap
+                padx_right = gap if (group_size == 10 and col_idx == 4) else 2
+                canvas.grid(row=0, column=col_idx, padx=(2, padx_right), pady=2)
                 color_idx += 1
 
             row_idx += 1

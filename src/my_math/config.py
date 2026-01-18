@@ -144,6 +144,11 @@ class Config:
         """Get the button color for game modes."""
         return self.get("game.button_color", "#3498db")
 
+    @property
+    def game_group_gap(self) -> int:
+        """Get the gap in pixels between groups of 5 when displaying 10 images."""
+        return self.get("game.group_gap", 15)
+
 
 # Global config instance
 _config: Config | None = None

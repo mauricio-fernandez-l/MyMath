@@ -24,5 +24,7 @@ game:
   image_size: 150
   # Delay between steps in milliseconds (images appear, then answers appear)
   delay_ms: 1000
+  # Gap in pixels between groups of 5 when displaying 10 images
+  group_gap: 30
   # Button color for game mode selection
   button_color: "#3498db"
