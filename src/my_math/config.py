@@ -114,21 +114,6 @@ class Config:
         return self.get_path("sound.correct_sound", "data/reactions")
 
     @property
-    def wrong_sound(self) -> Path:
-        """Get the wrong answer sound path."""
-        return self.get_path("sound.wrong_sound", "data/reactions/woops.wav")
-
-    @property
-    def window_width(self) -> int:
-        """Get the window width."""
-        return self.get("window.width", 1024)
-
-    @property
-    def window_height(self) -> int:
-        """Get the window height."""
-        return self.get("window.height", 768)
-
-    @property
     def fullscreen(self) -> bool:
         """Check if fullscreen mode is enabled."""
         return self.get("window.fullscreen", False)

@@ -8,27 +8,21 @@ images_folder: "data/images"
 # Sound settings
 sound:
   enabled: true
-  sounds_folder: "data/sounds"
-  correct_sound: "data/reactions/juhu.wav"
-  wrong_sound: "data/reactions/woops.wav"
+  correct_sound: "data/sounds"
 
 # Window settings
 window:
-  width: 1024
-  height: 768
-  fullscreen: false
+  fullscreen: true
 
-# Counting game settings
-counting:
-  # Maximum number of images to display (the count to guess)
-  max_count: 5
-  # Minimum number of images to display
-  min_count: 1
+# Game settings (shared across all game modes)
+game:
+  # Maximum number for counting/addition
+  max_number: 10
   # Number of rounds per game session
-  rounds: 5
-  # Size of each image in pixels
-  image_size: 80
-  # Delay before next round in milliseconds (after answer)
-  next_round_delay_ms: 2000
-  # Highlight duration in milliseconds
-  highlight_duration_ms: 1500
+  rounds: 10
+  # Maximum size of each image in pixels (preserves aspect ratio)
+  image_size: 150
+  # Delay between steps in milliseconds (images appear, then answers appear)
+  delay_ms: 1000
+  # Button color for game mode selection
+  button_color: "#3498db"
