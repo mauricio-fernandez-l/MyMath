@@ -133,67 +133,31 @@ class Config:
         """Check if fullscreen mode is enabled."""
         return self.get("window.fullscreen", False)
 
-    # Counting game settings
+    # Game settings (shared across all game modes)
     @property
-    def counting_max_count(self) -> int:
-        """Get the maximum count for counting game."""
-        return self.get("counting.max_count", 5)
+    def game_max_number(self) -> int:
+        """Get the maximum number for games."""
+        return self.get("game.max_number", 10)
 
     @property
-    def counting_min_count(self) -> int:
-        """Get the minimum count for counting game."""
-        return self.get("counting.min_count", 1)
+    def game_rounds(self) -> int:
+        """Get the number of rounds per game."""
+        return self.get("game.rounds", 10)
 
     @property
-    def counting_rounds(self) -> int:
-        """Get the number of rounds for counting game."""
-        return self.get("counting.rounds", 5)
+    def game_image_size(self) -> int:
+        """Get the image size for games."""
+        return self.get("game.image_size", 100)
 
     @property
-    def counting_image_size(self) -> int:
-        """Get the image size for counting game."""
-        return self.get("counting.image_size", 80)
-
-    @property
-    def counting_numbers_delay(self) -> int:
-        """Get the delay before showing number buttons in milliseconds."""
-        return self.get("counting.numbers_delay_ms", 1500)
-
-    @property
-    def counting_next_round_delay(self) -> int:
-        """Get the delay before next round in milliseconds."""
-        return self.get("counting.next_round_delay_ms", 2000)
-
-    @property
-    def counting_highlight_duration(self) -> int:
-        """Get the highlight duration in milliseconds."""
-        return self.get("counting.highlight_duration_ms", 1500)
-
-    # Addition game settings
-    @property
-    def addition_max_sum(self) -> int:
-        """Get the maximum sum for addition game."""
-        return self.get("addition.max_sum", 10)
-
-    @property
-    def addition_rounds(self) -> int:
-        """Get the number of rounds for addition game."""
-        return self.get("addition.rounds", 10)
-
-    @property
-    def addition_image_size(self) -> int:
-        """Get the image size for addition game."""
-        return self.get("addition.image_size", 80)
-
-    @property
-    def addition_numbers_delay(self) -> int:
+    def game_numbers_delay(self) -> int:
         """Get the delay before showing answer buttons in milliseconds."""
-        return self.get("addition.numbers_delay_ms", 2000)
+        return self.get("game.numbers_delay_ms", 1500)
 
     @property
-    def addition_next_round_delay(self) -> int:
+    def game_next_round_delay(self) -> int:
         """Get the delay before next round in milliseconds."""
-        return self.get("addition.next_round_delay_ms", 2000)
+        return self.get("game.next_round_delay_ms", 2000)
 
 
 # Global config instance

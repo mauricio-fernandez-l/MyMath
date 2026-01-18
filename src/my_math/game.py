@@ -228,7 +228,7 @@ class CountingGameView(BaseView):
     def _next_round(self) -> None:
         """Set up the next round."""
         self.current_round += 1
-        total_rounds = self.config.counting_rounds
+        total_rounds = self.config.game_rounds
 
         if self.current_round > total_rounds:
             self._show_results()
@@ -248,8 +248,8 @@ class CountingGameView(BaseView):
         self.answer_buttons.clear()
 
         # Generate random count
-        min_count = self.config.counting_min_count
-        max_count = self.config.counting_max_count
+        min_count = 1
+        max_count = self.config.game_max_number
         self.correct_answer = random.randint(min_count, max_count)
 
         # Select random image
@@ -261,7 +261,7 @@ class CountingGameView(BaseView):
             self._display_fallback_shapes(self.correct_answer)
 
         # Create answer buttons after a delay
-        delay = self.config.counting_numbers_delay
+        delay = self.config.game_numbers_delay
         self.after(delay, self._create_answer_buttons)
 
     def _calculate_groups(self, count: int) -> list[int]:
@@ -311,7 +311,7 @@ class CountingGameView(BaseView):
 
     def _calculate_image_size(self, count: int, groups: list[int]) -> int:
         """Calculate appropriate image size based on count and available space."""
-        base_size = self.config.counting_image_size
+        base_size = self.config.game_image_size
 
         # Estimate how much space we need
         # Each group is displayed in a row, max items in a row is 10
@@ -480,7 +480,7 @@ class CountingGameView(BaseView):
             )
 
         # Schedule next round
-        delay = self.config.counting_next_round_delay
+        delay = self.config.game_next_round_delay
         self.after(delay, self._next_round)
 
     def _show_results(self) -> None:
@@ -686,7 +686,7 @@ class AdditionGameView(BaseView):
     def _next_round(self) -> None:
         """Set up the next round."""
         self.current_round += 1
-        total_rounds = self.config.addition_rounds
+        total_rounds = self.config.game_rounds
 
         if self.current_round > total_rounds:
             self._show_results()
@@ -704,8 +704,8 @@ class AdditionGameView(BaseView):
             widget.destroy()
         self.answer_buttons.clear()
 
-        # Generate two random numbers that add up to max_sum or less
-        max_sum = self.config.addition_max_sum
+        # Generate two random numbers that add up to max_number or less
+        max_sum = self.config.game_max_number
         self.correct_answer = random.randint(2, max_sum)  # At least 2 so we can split
         self.num1 = random.randint(1, self.correct_answer - 1)
         self.num2 = self.correct_answer - self.num1
@@ -718,12 +718,12 @@ class AdditionGameView(BaseView):
             self._display_addition_fallback()
 
         # Create answer buttons after a delay
-        delay = self.config.addition_numbers_delay
+        delay = self.config.game_numbers_delay
         self.after(delay, self._create_answer_buttons)
 
     def _calculate_image_size(self, total_count: int) -> int:
         """Calculate appropriate image size based on count."""
-        base_size = self.config.addition_image_size
+        base_size = self.config.game_image_size
 
         if total_count > 15:
             return int(base_size * 0.5)
@@ -938,7 +938,7 @@ class AdditionGameView(BaseView):
     def _create_answer_buttons(self) -> None:
         """Create three answer buttons with one correct answer."""
         # Generate wrong answers
-        max_sum = self.config.addition_max_sum
+        max_sum = self.config.game_max_number
         min_val = max(2, self.correct_answer - 3)
         max_val = min(max_sum + 2, self.correct_answer + 3)
 
@@ -1008,7 +1008,7 @@ class AdditionGameView(BaseView):
             )
 
         # Schedule next round
-        delay = self.config.addition_next_round_delay
+        delay = self.config.game_next_round_delay
         self.after(delay, self._next_round)
 
     def _show_results(self) -> None:
