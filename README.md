@@ -24,28 +24,18 @@ Mauricio Fernández
 
 ### Setup
 
-1. Clone the repository
-2. Create a virtual environment:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate  # Windows
-   ```
-3. Install the package:
-   ```bash
-   pip install -e .
-   ```
+1. Download or clone the repository
+2. Run `install.bat` (double-click)
+
+The installer will:
+- Create a virtual environment
+- Install all dependencies
+- Create `config.yaml` from the example template
+- Create a desktop shortcut
 
 ## Usage
 
-Run the game:
-```bash
-python -m my_math
-```
-
-Or use the installed command:
-```bash
-mymath
-```
+Double-click the **MyMath** shortcut on your desktop to start the game.
 
 ## Configuration
 
