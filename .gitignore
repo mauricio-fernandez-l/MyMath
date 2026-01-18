@@ -1,0 +1,6 @@
+data*
+*.egg-info
+config.yaml
+dev*
+__pycache__/
+.venv/

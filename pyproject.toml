@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my_math"
+version = "0.1.0"
+description = "A math learning game for young children"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Mauricio Fernández", email = "mauricio.fernandez.lb@gmail.com"}
+]
+keywords = ["math", "learning", "children", "game", "education"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+    "Topic :: Games/Entertainment",
+]
+dependencies = [
+    "pillow>=10.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+]
+
+[project.scripts]
+myalphabet = "my_math.__main__:main"
+myalph = "my_math.__main__:main"
+
+[project.gui-scripts]
+myalphabet-gui = "my_math.__main__:main"
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+myalphabet = ["*.yaml"]
