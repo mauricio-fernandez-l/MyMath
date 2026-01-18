@@ -250,7 +250,10 @@ class CountingGameView(BaseView):
                 highlightthickness=0,
             )
             box.create_rectangle(
-                2, 2, box_size - 2, box_size - 2,
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
                 fill="#bdc3c7",  # Gray
                 outline="#95a5a6",
                 tags="box",
@@ -266,7 +269,10 @@ class CountingGameView(BaseView):
             box.delete("box")
             box_size = 20
             box.create_rectangle(
-                2, 2, box_size - 2, box_size - 2,
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
                 fill=color,
                 outline="#27ae60" if is_correct else "#c0392b",
                 tags="box",
@@ -381,11 +387,17 @@ class CountingGameView(BaseView):
 
         # Calculate max size that fits vertically (with padding)
         vertical_padding = 10 * (num_rows + 1)  # pady between rows
-        max_height_per_image = (frame_height - vertical_padding) // num_rows if num_rows > 0 else base_size
+        max_height_per_image = (
+            (frame_height - vertical_padding) // num_rows if num_rows > 0 else base_size
+        )
 
         # Calculate max size that fits horizontally (with padding)
         horizontal_padding = 6 * (max_cols + 1)  # padx between columns
-        max_width_per_image = (frame_width - horizontal_padding) // max_cols if max_cols > 0 else base_size
+        max_width_per_image = (
+            (frame_width - horizontal_padding) // max_cols
+            if max_cols > 0
+            else base_size
+        )
 
         # Use the smaller of the two to ensure it fits
         calculated_size = min(max_height_per_image, max_width_per_image, base_size)
@@ -774,7 +786,10 @@ class AdditionGameView(BaseView):
                 highlightthickness=0,
             )
             box.create_rectangle(
-                2, 2, box_size - 2, box_size - 2,
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
                 fill="#bdc3c7",  # Gray
                 outline="#95a5a6",
                 tags="box",
@@ -790,7 +805,10 @@ class AdditionGameView(BaseView):
             box.delete("box")
             box_size = 20
             box.create_rectangle(
-                2, 2, box_size - 2, box_size - 2,
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
                 fill=color,
                 outline="#27ae60" if is_correct else "#c0392b",
                 tags="box",
