@@ -154,6 +154,11 @@ class Config:
         """Get the delay between steps in milliseconds."""
         return self.get("game.delay_ms", 1500)
 
+    @property
+    def game_button_color(self) -> str:
+        """Get the button color for game modes."""
+        return self.get("game.button_color", "#3498db")
+
 
 # Global config instance
 _config: Config | None = None

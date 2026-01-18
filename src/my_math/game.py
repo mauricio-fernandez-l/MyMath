@@ -87,10 +87,12 @@ class MainMenuView(BaseView):
         # Configure grid
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=0)
-        self.grid_rowconfigure(2, weight=0)
-        self.grid_rowconfigure(3, weight=1)
-        self.grid_rowconfigure(4, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
+
+        # Header frame with icon and title side by side
+        header_frame = tk.Frame(self, bg="#f0f0f0")
+        header_frame.grid(row=0, column=0, pady=(50, 30))
 
         # Icon image
         self.icon_image = None
@@ -98,25 +100,31 @@ class MainMenuView(BaseView):
         if icon_path.exists():
             try:
                 img = Image.open(icon_path)
-                img = img.resize((120, 120), Image.Resampling.LANCZOS)
+                img = img.resize((150, 150), Image.Resampling.LANCZOS)
                 self.icon_image = ImageTk.PhotoImage(img)
-                icon_label = tk.Label(self, image=self.icon_image, bg="#f0f0f0")
-                icon_label.grid(row=0, column=0, pady=(30, 10))
+                icon_label = tk.Label(header_frame, image=self.icon_image, bg="#f0f0f0")
+                icon_label.pack(side="left", padx=(0, 20))
             except Exception:
                 pass
 
         # Title
         title_font = tkfont.Font(family="Arial", size=48, weight="bold")
         self.title_label = tk.Label(
-            self, text=self.config.title, font=title_font, bg="#f0f0f0", fg="#2c3e50"
+            header_frame,
+            text=self.config.title,
+            font=title_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
         )
-        self.title_label.grid(row=1, column=0, pady=(10, 30))
+        self.title_label.pack(side="left")
 
         # Button frame
         button_frame = tk.Frame(self, bg="#f0f0f0")
-        button_frame.grid(row=3, column=0, pady=20)
+        button_frame.grid(row=1, column=0, pady=20)
 
         # Button style
+        button_color = self.config.game_button_color
+        # Calculate darker shade for active state
         button_font = tkfont.Font(family="Arial", size=24, weight="bold")
         button_config = {
             "font": button_font,
@@ -124,16 +132,16 @@ class MainMenuView(BaseView):
             "height": 2,
             "relief": "flat",
             "cursor": "hand2",
+            "bg": button_color,
+            "fg": "white",
+            "activebackground": button_color,
+            "activeforeground": "white",
         }
 
         # Counting game button
         self.counting_btn = tk.Button(
             button_frame,
             text="🔢  1 2 3",
-            bg="#3498db",
-            fg="white",
-            activebackground="#2980b9",
-            activeforeground="white",
             command=lambda: self.controller.show_view("counting"),
             **button_config,
         )
@@ -143,10 +151,6 @@ class MainMenuView(BaseView):
         self.game2_btn = tk.Button(
             button_frame,
             text="➕",
-            bg="#9b59b6",
-            fg="white",
-            activebackground="#8e44ad",
-            activeforeground="white",
             command=lambda: self.controller.show_view("addition"),
             **button_config,
         )
@@ -973,6 +977,7 @@ class AdditionGameView(BaseView):
 
         # Create buttons
         button_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        button_color = self.config.game_button_color
 
         for answer in answers:
             btn = tk.Button(
@@ -981,9 +986,9 @@ class AdditionGameView(BaseView):
                 font=button_font,
                 width=4,
                 height=1,
-                bg="#9b59b6",
+                bg=button_color,
                 fg="white",
-                activebackground="#8e44ad",
+                activebackground=button_color,
                 activeforeground="white",
                 relief="flat",
                 cursor="hand2",
