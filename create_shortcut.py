@@ -64,9 +64,8 @@ def create_shortcut():
             print(f"Warning: Icon image not found at {icon_path}")
             ico_path = None
         else:
-            # Convert PNG to ICO
-            ico_path = project_root / "data" / "icon" / "game.ico"
-            ico_path.parent.mkdir(parents=True, exist_ok=True)
+            # Convert PNG to ICO in the same folder as the source image
+            ico_path = icon_path.with_suffix(".ico")
             print(f"Converting {icon_path} to ICO format...")
             png_to_ico(icon_path, ico_path)
             print(f"Created icon: {ico_path}")

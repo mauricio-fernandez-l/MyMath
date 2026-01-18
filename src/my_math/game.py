@@ -156,6 +156,23 @@ class MainMenuView(BaseView):
         )
         self.game2_btn.pack(pady=15)
 
+        # Exit button
+        self.exit_btn = tk.Button(
+            button_frame,
+            text="🚪",
+            font=button_font,
+            width=15,
+            height=2,
+            relief="flat",
+            cursor="hand2",
+            bg="#e67e22",
+            fg="white",
+            activebackground="#d35400",
+            activeforeground="white",
+            command=self.controller.quit_game,
+        )
+        self.exit_btn.pack(pady=15)
+
     def show(self) -> None:
         """Update title when shown (in case config changed)."""
         self.title_label.config(text=self.config.title)
@@ -632,6 +649,19 @@ class CountingResultsView(BaseView):
             **button_config,
         )
         self.menu_btn.pack(side="left", padx=20)
+
+        # Exit button
+        self.exit_btn = tk.Button(
+            self.button_frame,
+            text="🚪",
+            bg="#e67e22",
+            fg="white",
+            activebackground="#d35400",
+            activeforeground="white",
+            command=self.controller.quit_game,
+            **button_config,
+        )
+        self.exit_btn.pack(side="left", padx=20)
 
     def show(self, history: list[dict] | None = None) -> None:
         """Display the results."""
@@ -1242,6 +1272,19 @@ class AdditionResultsView(BaseView):
         )
         self.menu_btn.pack(side="left", padx=20)
 
+        # Exit button
+        self.exit_btn = tk.Button(
+            self.button_frame,
+            text="🚪",
+            bg="#e67e22",
+            fg="white",
+            activebackground="#d35400",
+            activeforeground="white",
+            command=self.controller.quit_game,
+            **button_config,
+        )
+        self.exit_btn.pack(side="left", padx=20)
+
     def show(self, history: list[dict] | None = None) -> None:
         """Display the results."""
         if history is not None:
@@ -1339,6 +1382,10 @@ class GameController:
             self.root.attributes("-fullscreen", False)
         else:
             self.root.quit()
+
+    def quit_game(self) -> None:
+        """Quit the game."""
+        self.root.quit()
 
     def _create_views(self) -> None:
         """Create all game views."""
