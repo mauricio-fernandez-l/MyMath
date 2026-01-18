@@ -155,6 +155,11 @@ class Config:
         return self.get("counting.image_size", 80)
 
     @property
+    def counting_numbers_delay(self) -> int:
+        """Get the delay before showing number buttons in milliseconds."""
+        return self.get("counting.numbers_delay_ms", 1500)
+
+    @property
     def counting_next_round_delay(self) -> int:
         """Get the delay before next round in milliseconds."""
         return self.get("counting.next_round_delay_ms", 2000)

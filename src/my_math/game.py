@@ -247,8 +247,9 @@ class CountingGameView(BaseView):
             # Fallback: display colored circles if no images
             self._display_fallback_shapes(self.correct_answer)
 
-        # Create answer buttons
-        self._create_answer_buttons()
+        # Create answer buttons after a delay
+        delay = self.config.counting_numbers_delay
+        self.after(delay, self._create_answer_buttons)
 
     def _display_images(self, image_path: Path, count: int) -> None:
         """Display the specified image multiple times."""
@@ -530,16 +531,8 @@ class GameController:
         """Set up the main window."""
         self.root.title(self.config.title)
 
-        width = self.config.window_width
-        height = self.config.window_height
-
-        # Center window on screen
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
-
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        # Start maximized
+        self.root.state("zoomed")
 
         if self.config.fullscreen:
             self.root.attributes("-fullscreen", True)
