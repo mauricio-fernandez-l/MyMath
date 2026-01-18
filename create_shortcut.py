@@ -88,7 +88,7 @@ def create_shortcut():
         sys.exit(1)
 
     # Get game name from config
-    game_name = config.get("game_name", "MyGame")
+    game_name = config.get("title", "MyGame")
 
     # Create shortcut
     shortcut_path = desktop / f"{game_name}.lnk"
