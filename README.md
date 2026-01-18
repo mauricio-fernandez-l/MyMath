@@ -1,0 +1,113 @@
+# MyMath 🔢
+
+A fun, interactive math learning game designed for young children (ages 3+). The game uses visual representations and positive reinforcement to teach counting and basic addition.
+
+## Author
+
+Mauricio Fernández
+
+## Features
+
+- **🔢 Counting Mode**: Learn to count by identifying how many objects are displayed
+- **➕ Addition Mode**: Learn basic addition with visual representations
+- **🖼️ Visual Learning**: Uses images grouped in educational patterns (groups of 2, 3, 4, 5, 10)
+- **🔊 Positive Reinforcement**: Sound effects for correct answers only
+- **🌍 Language Independent**: Uses symbols instead of text for universal accessibility
+- **⚙️ Configurable**: Easy YAML configuration for customization
+
+## Installation
+
+### Requirements
+
+- Python 3.9 or higher
+- Windows (for sound support via winsound)
+
+### Setup
+
+1. Clone the repository
+2. Create a virtual environment:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate  # Windows
+   ```
+3. Install the package:
+   ```bash
+   pip install -e .
+   ```
+
+## Usage
+
+Run the game:
+```bash
+python -m my_math
+```
+
+Or use the installed command:
+```bash
+mymath
+```
+
+## Configuration
+
+Edit `config.yaml` to customize the game:
+
+```yaml
+# Game title and icon
+title: "MyMath"
+icon_image: "data/icon/icon.png"
+
+# Folders for images and sounds
+images_folder: "data/images"
+sound:
+  enabled: true
+  correct_sound: "data/reactions"  # Folder with sound files
+
+# Game settings
+game:
+  max_number: 10      # Maximum number for counting/addition
+  rounds: 10          # Rounds per game session
+  image_size: 150     # Image size in pixels
+  delay_ms: 1000      # Delay between stages
+  button_color: "#3498db"  # Button color
+```
+
+## Project Structure
+
+```
+MyMath/
+├── config.yaml          # Game configuration
+├── pyproject.toml       # Project metadata
+├── src/
+│   └── my_math/
+│       ├── __init__.py
+│       ├── __main__.py  # Entry point
+│       ├── config.py    # Configuration loader
+│       └── game.py      # Main game logic
+└── data/
+    ├── images/          # Count/addition images
+    ├── reactions/       # Correct answer sounds
+    └── sounds/          # Other sounds
+```
+
+## Game Modes
+
+### Counting Mode 🔢
+- Displays a random number of images
+- Images are grouped educationally (e.g., 7 = 4 + 3)
+- Child selects the correct count from 3 options
+
+### Addition Mode ➕
+- Shows two groups of images with numbers
+- Displays: `num1 + num2 = ?`
+- Child selects the correct sum from 3 options
+
+## Progress Tracking
+
+- Visual progress boxes show completed rounds
+- Green = correct answer
+- Red = incorrect answer
+- Results summary at end of each session
+
+## License
+
+MIT License
