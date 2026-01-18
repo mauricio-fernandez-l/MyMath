@@ -42,6 +42,20 @@ class SoundPlayer:
         except Exception:
             pass  # Silently fail if sound can't be played
 
+    def play_random_from_folder(self, folder_path: Path) -> None:
+        """Play a random sound file from a folder."""
+        if not self.enabled or not folder_path.exists():
+            return
+        
+        # Find all sound files in the folder
+        sound_files = []
+        for ext in ["*.wav", "*.mp3", "*.ogg"]:
+            sound_files.extend(folder_path.glob(ext))
+        
+        if sound_files:
+            sound_path = random.choice(sound_files)
+            self.play(sound_path)
+
 
 class BaseView(tk.Frame):
     """Base class for all game views."""
@@ -462,7 +476,7 @@ class CountingGameView(BaseView):
 
         # Play sound only for correct answers (positive reinforcement)
         if is_correct:
-            self.controller.sound_player.play(self.config.correct_sound)
+            self.controller.sound_player.play_random_from_folder(self.config.correct_sound_folder)
 
         # Schedule next round
         delay = self.config.counting_next_round_delay

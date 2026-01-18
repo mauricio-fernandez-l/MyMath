@@ -109,9 +109,9 @@ class Config:
         return self.get("sound.enabled", True)
 
     @property
-    def correct_sound(self) -> Path:
-        """Get the correct answer sound path."""
-        return self.get_path("sound.correct_sound", "data/reactions/juhu.wav")
+    def correct_sound_folder(self) -> Path:
+        """Get the correct answer sounds folder path."""
+        return self.get_path("sound.correct_sound", "data/reactions")
 
     @property
     def wrong_sound(self) -> Path:
