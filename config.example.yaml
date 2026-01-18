@@ -1,0 +1,22 @@
+# Configuration file for game
+game_name: "MyMath"
+icon_image: "data/icon/MyMath.png"
+images_folder: "data/images"
+
+# Sound settings
+sound:
+  enabled: true
+  # Path to folder containing letter sounds (e.g., A.wav, B.wav, L.wav)
+  sounds_folder: "data/sounds"
+  correct_sound: "data/reactions/juhu.wav"
+
+# Game settings
+game:
+  # Maximum number of rounds per game session (0 = unlimited)
+  max_rounds: 3
+  # Delay to show letter before images appear (in milliseconds, 0 = no delay)
+  letter_display_delay_ms: 1500
+  # Highlight duration in milliseconds after clicking
+  highlight_duration_ms: 1500
+  # Delay before next round in milliseconds (after correct answer)
+  next_round_delay_ms: 1500
