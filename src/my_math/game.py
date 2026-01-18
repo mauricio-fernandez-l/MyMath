@@ -251,30 +251,112 @@ class CountingGameView(BaseView):
         delay = self.config.counting_numbers_delay
         self.after(delay, self._create_answer_buttons)
 
-    def _display_images(self, image_path: Path, count: int) -> None:
-        """Display the specified image multiple times."""
-        try:
-            # Load and resize image
-            img = Image.open(image_path)
-            size = self.config.counting_image_size
-            img = img.resize((size, size), Image.Resampling.LANCZOS)
+    def _calculate_groups(self, count: int) -> list[int]:
+        """Calculate groups for displaying images.
 
-            # Create a frame to hold images in a grid
+        Groups help children understand number composition:
+        - Even numbers: groups of 10, 4, 2
+        - Odd numbers: after 10s, use 3+2 patterns (e.g., 5=3+2, 7=4+3, 9=4+3+2)
+        """
+        groups = []
+        remaining = count
+
+        # First, take as many 10s as possible
+        while remaining >= 10:
+            groups.append(10)
+            remaining -= 10
+
+        # Handle the remainder
+        if remaining == 0:
+            pass
+        elif remaining % 2 == 0:  # Even remainder
+            # Use groups of 4 and 2
+            while remaining >= 4:
+                groups.append(4)
+                remaining -= 4
+            while remaining >= 2:
+                groups.append(2)
+                remaining -= 2
+        else:  # Odd remainder (1, 3, 5, 7, 9)
+            # Special patterns to avoid 1 and show composition
+            if remaining == 1:
+                groups.append(1)
+            elif remaining == 3:
+                groups.append(3)
+            elif remaining == 5:
+                groups.append(3)
+                groups.append(2)
+            elif remaining == 7:
+                groups.append(4)
+                groups.append(3)
+            elif remaining == 9:
+                groups.append(4)
+                groups.append(3)
+                groups.append(2)
+
+        return groups
+
+    def _calculate_image_size(self, count: int, groups: list[int]) -> int:
+        """Calculate appropriate image size based on count and available space."""
+        base_size = self.config.counting_image_size
+
+        # Estimate how much space we need
+        # Each group is displayed in a row, max items in a row is 10
+        max_group = max(groups) if groups else count
+        num_rows = len(groups) if groups else 1
+
+        # Reduce size for larger counts to fit on screen
+        if count > 20:
+            base_size = int(base_size * 0.5)
+        elif count > 10:
+            base_size = int(base_size * 0.7)
+        elif count > 5:
+            base_size = int(base_size * 0.85)
+
+        return base_size
+
+    def _display_images(self, image_path: Path, count: int) -> None:
+        """Display the specified image multiple times in educational groups."""
+        try:
+            # Calculate groups for educational display
+            groups = self._calculate_groups(count)
+
+            # Calculate appropriate image size
+            img_size = self._calculate_image_size(count, groups)
+
+            # Load image and resize preserving aspect ratio
+            img = Image.open(image_path)
+
+            # Calculate new size preserving aspect ratio
+            width, height = img.size
+            if width > height:
+                new_width = img_size
+                new_height = int(height * img_size / width)
+            else:
+                new_height = img_size
+                new_width = int(width * img_size / height)
+
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # Create a frame to hold images
             inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
             inner_frame.place(relx=0.5, rely=0.5, anchor="center")
 
-            # Calculate grid layout
-            cols = min(count, 5)  # Max 5 per row
-            rows = (count + cols - 1) // cols
+            # Display images in groups (each group in a row)
+            row_idx = 0
+            for group_size in groups:
+                # Create a frame for this group/row
+                row_frame = tk.Frame(inner_frame, bg="#ecf0f1")
+                row_frame.grid(row=row_idx, column=0, pady=5)
 
-            for i in range(count):
-                photo = ImageTk.PhotoImage(img)
-                self.images.append(photo)  # Keep reference
+                for col_idx in range(group_size):
+                    photo = ImageTk.PhotoImage(img)
+                    self.images.append(photo)  # Keep reference
 
-                label = tk.Label(inner_frame, image=photo, bg="#ecf0f1")
-                row = i // cols
-                col = i % cols
-                label.grid(row=row, column=col, padx=10, pady=10)
+                    label = tk.Label(row_frame, image=photo, bg="#ecf0f1")
+                    label.grid(row=0, column=col_idx, padx=3, pady=3)
+
+                row_idx += 1
 
         except Exception as e:
             print(f"Error loading image: {e}")
@@ -282,24 +364,38 @@ class CountingGameView(BaseView):
 
     def _display_fallback_shapes(self, count: int) -> None:
         """Display colored circles as fallback when no images available."""
+        # Calculate groups for educational display
+        groups = self._calculate_groups(count)
+        img_size = self._calculate_image_size(count, groups)
+
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
         inner_frame.place(relx=0.5, rely=0.5, anchor="center")
 
         colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
-        size = self.config.counting_image_size
+        color_idx = 0
 
-        cols = min(count, 5)
+        # Display shapes in groups (each group in a row)
+        row_idx = 0
+        for group_size in groups:
+            row_frame = tk.Frame(inner_frame, bg="#ecf0f1")
+            row_frame.grid(row=row_idx, column=0, pady=5)
 
-        for i in range(count):
-            canvas = tk.Canvas(
-                inner_frame, width=size, height=size, bg="#ecf0f1", highlightthickness=0
-            )
-            color = colors[i % len(colors)]
-            canvas.create_oval(5, 5, size - 5, size - 5, fill=color, outline="")
+            for col_idx in range(group_size):
+                canvas = tk.Canvas(
+                    row_frame,
+                    width=img_size,
+                    height=img_size,
+                    bg="#ecf0f1",
+                    highlightthickness=0,
+                )
+                color = colors[color_idx % len(colors)]
+                canvas.create_oval(
+                    5, 5, img_size - 5, img_size - 5, fill=color, outline=""
+                )
+                canvas.grid(row=0, column=col_idx, padx=3, pady=3)
+                color_idx += 1
 
-            row = i // cols
-            col = i % cols
-            canvas.grid(row=row, column=col, padx=10, pady=10)
+            row_idx += 1
 
     def _create_answer_buttons(self) -> None:
         """Create three answer buttons with one correct answer."""
