@@ -150,14 +150,9 @@ class Config:
         return self.get("game.image_size", 100)
 
     @property
-    def game_numbers_delay(self) -> int:
-        """Get the delay before showing answer buttons in milliseconds."""
-        return self.get("game.numbers_delay_ms", 1500)
-
-    @property
-    def game_next_round_delay(self) -> int:
-        """Get the delay before next round in milliseconds."""
-        return self.get("game.next_round_delay_ms", 2000)
+    def game_delay(self) -> int:
+        """Get the delay between steps in milliseconds."""
+        return self.get("game.delay_ms", 1500)
 
 
 # Global config instance

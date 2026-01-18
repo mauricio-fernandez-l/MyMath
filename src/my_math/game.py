@@ -252,16 +252,25 @@ class CountingGameView(BaseView):
         max_count = self.config.game_max_number
         self.correct_answer = random.randint(min_count, max_count)
 
-        # Select random image
+        # Store image path for delayed display
         if self.available_images:
-            image_path = random.choice(self.available_images)
-            self._display_images(image_path, self.correct_answer)
+            self._current_image_path = random.choice(self.available_images)
         else:
-            # Fallback: display colored circles if no images
+            self._current_image_path = None
+
+        # Show images after delay, then answers after another delay
+        delay = self.config.game_delay
+        self.after(delay, self._show_images)
+
+    def _show_images(self) -> None:
+        """Display images after initial delay."""
+        if self._current_image_path:
+            self._display_images(self._current_image_path, self.correct_answer)
+        else:
             self._display_fallback_shapes(self.correct_answer)
 
-        # Create answer buttons after a delay
-        delay = self.config.game_numbers_delay
+        # Show answer buttons after another delay
+        delay = self.config.game_delay
         self.after(delay, self._create_answer_buttons)
 
     def _calculate_groups(self, count: int) -> list[int]:
@@ -480,7 +489,7 @@ class CountingGameView(BaseView):
             )
 
         # Schedule next round
-        delay = self.config.game_next_round_delay
+        delay = self.config.game_delay
         self.after(delay, self._next_round)
 
     def _show_results(self) -> None:
@@ -710,15 +719,25 @@ class AdditionGameView(BaseView):
         self.num1 = random.randint(1, self.correct_answer - 1)
         self.num2 = self.correct_answer - self.num1
 
-        # Select random image
+        # Store image path for delayed display
         if self.available_images:
-            image_path = random.choice(self.available_images)
-            self._display_addition(image_path)
+            self._current_image_path = random.choice(self.available_images)
+        else:
+            self._current_image_path = None
+
+        # Show images after delay, then answers after another delay
+        delay = self.config.game_delay
+        self.after(delay, self._show_addition_images)
+
+    def _show_addition_images(self) -> None:
+        """Display addition images after initial delay."""
+        if self._current_image_path:
+            self._display_addition(self._current_image_path)
         else:
             self._display_addition_fallback()
 
-        # Create answer buttons after a delay
-        delay = self.config.game_numbers_delay
+        # Show answer buttons after another delay
+        delay = self.config.game_delay
         self.after(delay, self._create_answer_buttons)
 
     def _calculate_image_size(self, total_count: int) -> int:
@@ -1008,7 +1027,7 @@ class AdditionGameView(BaseView):
             )
 
         # Schedule next round
-        delay = self.config.game_next_round_delay
+        delay = self.config.game_delay
         self.after(delay, self._next_round)
 
     def _show_results(self) -> None:
