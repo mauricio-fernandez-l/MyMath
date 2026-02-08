@@ -15,6 +15,7 @@ from .config import get_config, Config
 # Try to import VLC
 try:
     import vlc
+
     VLC_AVAILABLE = True
 except ImportError:
     VLC_AVAILABLE = False
