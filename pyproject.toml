@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "pillow>=10.0.0",
     "pyyaml>=6.0",
+    "python-vlc>=3.0.0",
 ]
 
 [project.optional-dependencies]

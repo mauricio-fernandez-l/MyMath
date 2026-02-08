@@ -149,6 +149,21 @@ class Config:
         """Get the gap in pixels between groups of 5 when displaying 10 images."""
         return self.get("game.group_gap", 15)
 
+    @property
+    def videos_folder(self) -> Path:
+        """Get the videos folder path."""
+        return self.get_path("video.videos_folder", "data/videos")
+
+    @property
+    def video_min_rounds(self) -> int:
+        """Get minimum rounds needed for video reward."""
+        return self.get("video.min_rounds", 7)
+
+    @property
+    def video_max_wrong(self) -> int:
+        """Get maximum wrong answers allowed for video reward."""
+        return self.get("video.max_wrong", 1)
+
 
 # Global config instance
 _config: Config | None = None

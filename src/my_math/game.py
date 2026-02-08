@@ -2,6 +2,7 @@
 
 import os
 import random
+import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import font as tkfont
@@ -10,6 +11,89 @@ from typing import Callable
 from PIL import Image, ImageTk
 
 from .config import get_config, Config
+
+# Try to import VLC
+try:
+    import vlc
+    VLC_AVAILABLE = True
+except ImportError:
+    VLC_AVAILABLE = False
+
+
+class VideoPlayer:
+    """Video player using VLC for tkinter embedding."""
+
+    def __init__(self, parent: tk.Widget, config: Config):
+        self.parent = parent
+        self.config = config
+        self.instance = None
+        self.player = None
+        self.video_frame = None
+        self._available_videos: list[Path] = []
+
+        if VLC_AVAILABLE:
+            try:
+                self.instance = vlc.Instance()
+                self.player = self.instance.media_player_new()
+            except Exception:
+                self.instance = None
+                self.player = None
+
+    def _load_available_videos(self) -> None:
+        """Load list of available videos from the videos folder."""
+        videos_folder = self.config.videos_folder
+        self._available_videos = []
+
+        if videos_folder.exists():
+            for ext in ["*.mp4", "*.avi", "*.mkv", "*.mov", "*.wmv", "*.webm"]:
+                self._available_videos.extend(videos_folder.glob(ext))
+
+    def get_random_video(self) -> Path | None:
+        """Get a random video from the videos folder."""
+        self._load_available_videos()
+        if self._available_videos:
+            return random.choice(self._available_videos)
+        return None
+
+    def create_frame(self, parent: tk.Widget) -> tk.Frame:
+        """Create and return a frame for video embedding."""
+        self.video_frame = tk.Frame(parent, bg="black")
+        return self.video_frame
+
+    def play(self, video_path: Path) -> bool:
+        """Play a video file."""
+        if not VLC_AVAILABLE or self.player is None or self.video_frame is None:
+            return False
+
+        try:
+            media = self.instance.media_new(str(video_path))
+            self.player.set_media(media)
+
+            # Get the window handle for embedding
+            if sys.platform == "win32":
+                self.player.set_hwnd(self.video_frame.winfo_id())
+            elif sys.platform == "darwin":
+                self.player.set_nsobject(self.video_frame.winfo_id())
+            else:
+                self.player.set_xwindow(self.video_frame.winfo_id())
+
+            self.player.play()
+            return True
+        except Exception as e:
+            print(f"Error playing video: {e}")
+            return False
+
+    def stop(self) -> None:
+        """Stop the video playback."""
+        if self.player is not None:
+            try:
+                self.player.stop()
+            except Exception:
+                pass
+
+    def is_available(self) -> bool:
+        """Check if video playback is available."""
+        return VLC_AVAILABLE and self.player is not None
 
 
 class SoundPlayer:
@@ -597,6 +681,7 @@ class CountingResultsView(BaseView):
     def __init__(self, parent: tk.Widget, controller: "GameController"):
         super().__init__(parent, controller)
         self.history: list[dict] = []
+        self.video_player: VideoPlayer | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -611,11 +696,22 @@ class CountingResultsView(BaseView):
         self.title_label = tk.Label(
             self, text="🏆", font=title_font, bg="#f0f0f0", fg="#2c3e50"
         )
-        self.title_label.grid(row=0, column=0, pady=(30, 20))
+        self.title_label.grid(row=0, column=0, columnspan=2, pady=(30, 20))
 
-        # Results area
-        self.results_frame = tk.Frame(self, bg="#f0f0f0")
-        self.results_frame.grid(row=1, column=0, sticky="nsew", padx=50)
+        # Main content area (will hold results on left, video on right)
+        self.content_frame = tk.Frame(self, bg="#f0f0f0")
+        self.content_frame.grid(row=1, column=0, sticky="nsew", padx=20)
+        self.content_frame.grid_columnconfigure(0, weight=1)
+        self.content_frame.grid_columnconfigure(1, weight=1)
+        self.content_frame.grid_rowconfigure(0, weight=1)
+
+        # Results area (left side)
+        self.results_frame = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.results_frame.grid(row=0, column=0, sticky="nsew", padx=10)
+
+        # Video area (right side) - will be populated when needed
+        self.video_container = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.video_container.grid(row=0, column=1, sticky="nsew", padx=10)
 
         # Button area
         self.button_frame = tk.Frame(self, bg="#f0f0f0")
@@ -638,7 +734,7 @@ class CountingResultsView(BaseView):
             fg="white",
             activebackground="#27ae60",
             activeforeground="white",
-            command=lambda: self.controller.show_view("counting"),
+            command=self._on_play_again,
             **button_config,
         )
         self.play_again_btn.pack(side="left", padx=20)
@@ -651,7 +747,7 @@ class CountingResultsView(BaseView):
             fg="white",
             activebackground="#2980b9",
             activeforeground="white",
-            command=lambda: self.controller.show_view("main_menu"),
+            command=self._on_main_menu,
             **button_config,
         )
         self.menu_btn.pack(side="left", padx=20)
@@ -664,10 +760,40 @@ class CountingResultsView(BaseView):
             fg="white",
             activebackground="#d35400",
             activeforeground="white",
-            command=self.controller.quit_game,
+            command=self._on_exit,
             **button_config,
         )
         self.exit_btn.pack(side="left", padx=20)
+
+    def _on_play_again(self) -> None:
+        """Handle play again button."""
+        self._stop_video()
+        self.controller.show_view("counting")
+
+    def _on_main_menu(self) -> None:
+        """Handle main menu button."""
+        self._stop_video()
+        self.controller.show_view("main_menu")
+
+    def _on_exit(self) -> None:
+        """Handle exit button."""
+        self._stop_video()
+        self.controller.quit_game()
+
+    def _stop_video(self) -> None:
+        """Stop video playback if active."""
+        if self.video_player is not None:
+            self.video_player.stop()
+
+    def _check_video_reward(self) -> bool:
+        """Check if player qualifies for video reward."""
+        total = len(self.history)
+        wrong_count = sum(1 for h in self.history if not h["is_correct"])
+
+        min_rounds = self.config.video_min_rounds
+        max_wrong = self.config.video_max_wrong
+
+        return total >= min_rounds and wrong_count <= max_wrong
 
     def show(self, history: list[dict] | None = None) -> None:
         """Display the results."""
@@ -676,6 +802,8 @@ class CountingResultsView(BaseView):
 
         # Clear previous results
         for widget in self.results_frame.winfo_children():
+            widget.destroy()
+        for widget in self.video_container.winfo_children():
             widget.destroy()
 
         # Calculate score
@@ -729,6 +857,28 @@ class CountingResultsView(BaseView):
                     fg="white",
                 )
                 wrong_label.pack()
+
+        # Check for video reward
+        if self._check_video_reward():
+            self._play_video_reward()
+
+    def _play_video_reward(self) -> None:
+        """Play a video reward if available."""
+        self.video_player = VideoPlayer(self.video_container, self.config)
+
+        if not self.video_player.is_available():
+            return
+
+        video_path = self.video_player.get_random_video()
+        if video_path is None:
+            return
+
+        # Create video frame
+        video_frame = self.video_player.create_frame(self.video_container)
+        video_frame.pack(fill="both", expand=True, pady=20)
+
+        # Start playback after a short delay to ensure frame is ready
+        self.after(100, lambda: self.video_player.play(video_path))
 
 
 class AdditionGameView(BaseView):
@@ -1219,6 +1369,7 @@ class AdditionResultsView(BaseView):
     def __init__(self, parent: tk.Widget, controller: "GameController"):
         super().__init__(parent, controller)
         self.history: list[dict] = []
+        self.video_player: VideoPlayer | None = None
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -1233,11 +1384,22 @@ class AdditionResultsView(BaseView):
         self.title_label = tk.Label(
             self, text="🏆", font=title_font, bg="#f0f0f0", fg="#2c3e50"
         )
-        self.title_label.grid(row=0, column=0, pady=(30, 20))
+        self.title_label.grid(row=0, column=0, columnspan=2, pady=(30, 20))
 
-        # Results area
-        self.results_frame = tk.Frame(self, bg="#f0f0f0")
-        self.results_frame.grid(row=1, column=0, sticky="nsew", padx=50)
+        # Main content area (will hold results on left, video on right)
+        self.content_frame = tk.Frame(self, bg="#f0f0f0")
+        self.content_frame.grid(row=1, column=0, sticky="nsew", padx=20)
+        self.content_frame.grid_columnconfigure(0, weight=1)
+        self.content_frame.grid_columnconfigure(1, weight=1)
+        self.content_frame.grid_rowconfigure(0, weight=1)
+
+        # Results area (left side)
+        self.results_frame = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.results_frame.grid(row=0, column=0, sticky="nsew", padx=10)
+
+        # Video area (right side) - will be populated when needed
+        self.video_container = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.video_container.grid(row=0, column=1, sticky="nsew", padx=10)
 
         # Button area
         self.button_frame = tk.Frame(self, bg="#f0f0f0")
@@ -1260,7 +1422,7 @@ class AdditionResultsView(BaseView):
             fg="white",
             activebackground="#27ae60",
             activeforeground="white",
-            command=lambda: self.controller.show_view("addition"),
+            command=self._on_play_again,
             **button_config,
         )
         self.play_again_btn.pack(side="left", padx=20)
@@ -1273,7 +1435,7 @@ class AdditionResultsView(BaseView):
             fg="white",
             activebackground="#2980b9",
             activeforeground="white",
-            command=lambda: self.controller.show_view("main_menu"),
+            command=self._on_main_menu,
             **button_config,
         )
         self.menu_btn.pack(side="left", padx=20)
@@ -1286,10 +1448,40 @@ class AdditionResultsView(BaseView):
             fg="white",
             activebackground="#d35400",
             activeforeground="white",
-            command=self.controller.quit_game,
+            command=self._on_exit,
             **button_config,
         )
         self.exit_btn.pack(side="left", padx=20)
+
+    def _on_play_again(self) -> None:
+        """Handle play again button."""
+        self._stop_video()
+        self.controller.show_view("addition")
+
+    def _on_main_menu(self) -> None:
+        """Handle main menu button."""
+        self._stop_video()
+        self.controller.show_view("main_menu")
+
+    def _on_exit(self) -> None:
+        """Handle exit button."""
+        self._stop_video()
+        self.controller.quit_game()
+
+    def _stop_video(self) -> None:
+        """Stop video playback if active."""
+        if self.video_player is not None:
+            self.video_player.stop()
+
+    def _check_video_reward(self) -> bool:
+        """Check if player qualifies for video reward."""
+        total = len(self.history)
+        wrong_count = sum(1 for h in self.history if not h["is_correct"])
+
+        min_rounds = self.config.video_min_rounds
+        max_wrong = self.config.video_max_wrong
+
+        return total >= min_rounds and wrong_count <= max_wrong
 
     def show(self, history: list[dict] | None = None) -> None:
         """Display the results."""
@@ -1298,6 +1490,8 @@ class AdditionResultsView(BaseView):
 
         # Clear previous results
         for widget in self.results_frame.winfo_children():
+            widget.destroy()
+        for widget in self.video_container.winfo_children():
             widget.destroy()
 
         # Calculate score
@@ -1340,6 +1534,28 @@ class AdditionResultsView(BaseView):
                 fg="white",
             )
             label.pack()
+
+        # Check for video reward
+        if self._check_video_reward():
+            self._play_video_reward()
+
+    def _play_video_reward(self) -> None:
+        """Play a video reward if available."""
+        self.video_player = VideoPlayer(self.video_container, self.config)
+
+        if not self.video_player.is_available():
+            return
+
+        video_path = self.video_player.get_random_video()
+        if video_path is None:
+            return
+
+        # Create video frame
+        video_frame = self.video_player.create_frame(self.video_container)
+        video_frame.pack(fill="both", expand=True, pady=20)
+
+        # Start playback after a short delay to ensure frame is ready
+        self.after(100, lambda: self.video_player.play(video_path))
 
 
 class GameController:

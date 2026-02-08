@@ -10,6 +10,12 @@ sound:
   enabled: true
   correct_sound: "data/sounds"
 
+# Video reward settings
+video:
+  videos_folder: "data/videos"
+  min_rounds: 7
+  max_wrong: 1
+
 # Window settings
 window:
   fullscreen: true
