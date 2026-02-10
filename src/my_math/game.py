@@ -24,6 +24,17 @@ except ImportError:
 class VideoPlayer:
     """Video player using VLC for tkinter embedding."""
 
+    _vlc_instance = None  # Shared VLC instance (expensive to create)
+
+    @classmethod
+    def warmup(cls) -> None:
+        """Pre-initialize the VLC instance so first playback is instant."""
+        if VLC_AVAILABLE and cls._vlc_instance is None:
+            try:
+                cls._vlc_instance = vlc.Instance()
+            except Exception:
+                cls._vlc_instance = None
+
     def __init__(self, parent: tk.Widget, config: Config):
         self.parent = parent
         self.config = config
@@ -34,7 +45,10 @@ class VideoPlayer:
 
         if VLC_AVAILABLE:
             try:
-                self.instance = vlc.Instance()
+                # Reuse the shared VLC instance
+                if VideoPlayer._vlc_instance is None:
+                    VideoPlayer._vlc_instance = vlc.Instance()
+                self.instance = VideoPlayer._vlc_instance
                 self.player = self.instance.media_player_new()
             except Exception:
                 self.instance = None
@@ -801,6 +815,9 @@ class CountingResultsView(BaseView):
         if history is not None:
             self.history = history
 
+        # Stop any previously playing video
+        self._stop_video()
+
         # Clear previous results
         for widget in self.results_frame.winfo_children():
             widget.destroy()
@@ -1489,6 +1506,9 @@ class AdditionResultsView(BaseView):
         if history is not None:
             self.history = history
 
+        # Stop any previously playing video
+        self._stop_video()
+
         # Clear previous results
         for widget in self.results_frame.winfo_children():
             widget.destroy()
@@ -1566,6 +1586,9 @@ class GameController:
         self.root = root
         self.config = config
         self.sound_player = SoundPlayer(config.sound_enabled)
+
+        # Pre-initialize VLC so first video playback is instant
+        VideoPlayer.warmup()
 
         # Configure main window
         self._setup_window()
