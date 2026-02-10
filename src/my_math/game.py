@@ -4,6 +4,7 @@ import os
 import random
 import sys
 import tkinter as tk
+from importlib.metadata import version as pkg_version
 from pathlib import Path
 from tkinter import font as tkfont
 from typing import Callable
@@ -271,6 +272,21 @@ class MainMenuView(BaseView):
             command=self.controller.quit_game,
         )
         self.exit_btn.pack(pady=15)
+
+        # Version label at the bottom center
+        try:
+            ver = pkg_version("my_math")
+        except Exception:
+            ver = "?"
+        version_font = tkfont.Font(family="Arial", size=9)
+        version_label = tk.Label(
+            self,
+            text=f"v{ver}",
+            font=version_font,
+            bg="#f0f0f0",
+            fg="#aaaaaa",
+        )
+        version_label.grid(row=2, column=0, pady=(0, 10), sticky="s")
 
     def show(self) -> None:
         """Update title when shown (in case config changed)."""
