@@ -6,6 +6,7 @@ import sys
 import tkinter as tk
 from importlib.metadata import version as pkg_version
 from pathlib import Path
+from tkinter import filedialog
 from tkinter import font as tkfont
 from typing import Callable
 
@@ -409,25 +410,27 @@ class SettingsView(BaseView):
     def _build_settings_fields(self) -> None:
         """Build the settings input fields based on config structure."""
         # Define the settings fields with their types and descriptions
+        # Format: (key, field_type, label, description)
+        # field_type can be: str, int, bool, file, folder
         settings_schema = [
             ("title", "str", "Game Title", "The title displayed in the window"),
-            ("icon_image", "str", "Icon Image", "Path to the icon image file"),
+            ("icon_image", "file", "Icon Image", "Path to the icon image file"),
             (
                 "images_folder",
-                "str",
+                "folder",
                 "Images Folder",
                 "Path to folder containing game images",
             ),
             ("sound.enabled", "bool", "Sound Enabled", "Enable or disable sounds"),
             (
                 "sound.correct_sound",
-                "str",
+                "folder",
                 "Sounds Folder",
                 "Path to folder containing sound files",
             ),
             (
                 "video.videos_folder",
-                "str",
+                "folder",
                 "Videos Folder",
                 "Path to folder containing reward videos",
             ),
@@ -490,6 +493,7 @@ class SettingsView(BaseView):
         label_font = tkfont.Font(family="Arial", size=12, weight="bold")
         desc_font = tkfont.Font(family="Arial", size=10)
         entry_font = tkfont.Font(family="Arial", size=12)
+        browse_font = tkfont.Font(family="Arial", size=10)
 
         for i, (key, field_type, label, description) in enumerate(settings_schema):
             # Container for each setting
@@ -536,6 +540,31 @@ class SettingsView(BaseView):
                 )
                 widget.var = var  # Store reference to variable
                 widget.grid(row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10)
+            elif field_type in ("file", "folder"):
+                # Frame to hold entry and browse button
+                path_frame = tk.Frame(row_frame, bg="#ffffff")
+                path_frame.grid(
+                    row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10
+                )
+
+                widget = tk.Entry(path_frame, font=entry_font, width=35)
+                widget.insert(
+                    0, str(current_value) if current_value is not None else ""
+                )
+                widget.pack(side="left", padx=(0, 5))
+
+                # Browse button
+                browse_btn = tk.Button(
+                    path_frame,
+                    text="📁 Browse",
+                    font=browse_font,
+                    bg="#3498db",
+                    fg="white",
+                    relief="flat",
+                    cursor="hand2",
+                    command=lambda w=widget, ft=field_type: self._browse_path(w, ft),
+                )
+                browse_btn.pack(side="left")
             else:
                 widget = tk.Entry(row_frame, font=entry_font, width=40)
                 widget.insert(
@@ -544,6 +573,51 @@ class SettingsView(BaseView):
                 widget.grid(row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10)
 
             self.entries[key] = (widget, field_type)
+
+    def _browse_path(self, entry_widget: tk.Entry, path_type: str) -> None:
+        """Open file/folder browser and update entry widget."""
+        # Get initial directory from current entry value
+        current_path = entry_widget.get()
+        initial_dir = None
+        if current_path:
+            full_path = self.config.project_root / current_path
+            if full_path.exists():
+                if full_path.is_dir():
+                    initial_dir = str(full_path)
+                else:
+                    initial_dir = str(full_path.parent)
+
+        if initial_dir is None:
+            initial_dir = str(self.config.project_root)
+
+        if path_type == "folder":
+            selected = filedialog.askdirectory(
+                initialdir=initial_dir,
+                title="Select Folder",
+            )
+        else:  # file
+            selected = filedialog.askopenfilename(
+                initialdir=initial_dir,
+                title="Select File",
+                filetypes=[
+                    ("Image files", "*.png *.jpg *.jpeg *.gif *.bmp *.ico"),
+                    ("All files", "*.*"),
+                ],
+            )
+
+        if selected:
+            # Try to make the path relative to project root
+            try:
+                selected_path = Path(selected)
+                relative_path = selected_path.relative_to(self.config.project_root)
+                selected = str(relative_path).replace("\\", "/")
+            except ValueError:
+                # Path is not relative to project root, use absolute
+                selected = selected.replace("\\", "/")
+
+            # Update entry widget
+            entry_widget.delete(0, tk.END)
+            entry_widget.insert(0, selected)
 
     def _save_settings(self) -> None:
         """Save the settings to config.yaml."""
