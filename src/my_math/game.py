@@ -6,6 +6,7 @@ import sys
 import tkinter as tk
 from importlib.metadata import version as pkg_version
 from pathlib import Path
+from tkinter import filedialog
 from tkinter import font as tkfont
 from typing import Callable
 
@@ -256,6 +257,23 @@ class MainMenuView(BaseView):
         )
         self.game2_btn.pack(pady=15)
 
+        # Settings button
+        self.settings_btn = tk.Button(
+            button_frame,
+            text="⚙️ Settings",
+            font=button_font,
+            width=15,
+            height=2,
+            relief="flat",
+            cursor="hand2",
+            bg="#9b59b6",
+            fg="white",
+            activebackground="#8e44ad",
+            activeforeground="white",
+            command=lambda: self.controller.show_view("settings"),
+        )
+        self.settings_btn.pack(pady=15)
+
         # Exit button
         self.exit_btn = tk.Button(
             button_frame,
@@ -291,6 +309,366 @@ class MainMenuView(BaseView):
     def show(self) -> None:
         """Update title when shown (in case config changed)."""
         self.title_label.config(text=self.config.title)
+
+
+class SettingsView(BaseView):
+    """Settings view for editing configuration."""
+
+    def __init__(self, parent: tk.Widget, controller: "GameController"):
+        super().__init__(parent, controller)
+        self.entries: dict[str, tk.Widget] = {}
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Set up the settings UI."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        # Header with back button
+        header = tk.Frame(self, bg="#f0f0f0")
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
+        header.grid_columnconfigure(1, weight=1)
+
+        back_font = tkfont.Font(family="Arial", size=14)
+        self.back_btn = tk.Button(
+            header,
+            text="⬅️",
+            font=back_font,
+            bg="#95a5a6",
+            fg="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self.controller.show_view("main_menu"),
+        )
+        self.back_btn.grid(row=0, column=0, sticky="w")
+
+        title_font = tkfont.Font(family="Arial", size=24, weight="bold")
+        title_label = tk.Label(
+            header,
+            text="⚙️ Settings",
+            font=title_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
+        )
+        title_label.grid(row=0, column=1)
+
+        # Save button
+        save_btn = tk.Button(
+            header,
+            text="💾 Save",
+            font=back_font,
+            bg="#27ae60",
+            fg="white",
+            relief="flat",
+            cursor="hand2",
+            command=self._save_settings,
+        )
+        save_btn.grid(row=0, column=2, sticky="e")
+
+        # Scrollable frame for settings
+        canvas_frame = tk.Frame(self, bg="#f0f0f0")
+        canvas_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        canvas_frame.grid_rowconfigure(0, weight=1)
+        canvas_frame.grid_columnconfigure(0, weight=1)
+
+        self.canvas = tk.Canvas(canvas_frame, bg="#f0f0f0", highlightthickness=0)
+        scrollbar = tk.Scrollbar(
+            canvas_frame, orient="vertical", command=self.canvas.yview
+        )
+        self.scrollable_frame = tk.Frame(self.canvas, bg="#f0f0f0")
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
+        )
+
+        self.canvas_window = self.canvas.create_window(
+            (0, 0), window=self.scrollable_frame, anchor="nw"
+        )
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
+
+        # Bind mouse wheel for scrolling
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Bind canvas resize to update scrollable frame width
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+
+        # Build settings fields
+        self._build_settings_fields()
+
+    def _on_canvas_configure(self, event: tk.Event) -> None:
+        """Update scrollable frame width when canvas is resized."""
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+
+    def _on_mousewheel(self, event: tk.Event) -> None:
+        """Handle mouse wheel scrolling."""
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def _build_settings_fields(self) -> None:
+        """Build the settings input fields based on config structure."""
+        # Define the settings fields with their types and descriptions
+        # Format: (key, field_type, label, description)
+        # field_type can be: str, int, bool, file, folder
+        settings_schema = [
+            ("title", "str", "Game Title", "The title displayed in the window"),
+            ("icon_image", "file", "Icon Image", "Path to the icon image file"),
+            (
+                "images_folder",
+                "folder",
+                "Images Folder",
+                "Path to folder containing game images",
+            ),
+            ("sound.enabled", "bool", "Sound Enabled", "Enable or disable sounds"),
+            (
+                "sound.correct_sound",
+                "folder",
+                "Sounds Folder",
+                "Path to folder containing sound files",
+            ),
+            (
+                "video.videos_folder",
+                "folder",
+                "Videos Folder",
+                "Path to folder containing reward videos",
+            ),
+            (
+                "video.min_rounds",
+                "int",
+                "Min Rounds for Video",
+                "Minimum rounds needed to unlock video reward",
+            ),
+            (
+                "video.max_wrong",
+                "int",
+                "Max Wrong for Video",
+                "Maximum wrong answers allowed for video reward",
+            ),
+            (
+                "window.fullscreen",
+                "bool",
+                "Fullscreen Mode",
+                "Start the game in fullscreen mode",
+            ),
+            (
+                "game.max_number",
+                "int",
+                "Max Number",
+                "Maximum number for counting/addition games",
+            ),
+            (
+                "game.rounds",
+                "int",
+                "Rounds per Game",
+                "Number of rounds in each game session",
+            ),
+            (
+                "game.image_size",
+                "int",
+                "Image Size (px)",
+                "Maximum size of images in pixels",
+            ),
+            (
+                "game.delay_ms",
+                "int",
+                "Delay (ms)",
+                "Delay between steps in milliseconds",
+            ),
+            (
+                "game.group_gap",
+                "int",
+                "Group Gap (px)",
+                "Gap between groups of 5 images",
+            ),
+            (
+                "game.button_color",
+                "str",
+                "Button Color",
+                "Color for game mode buttons (hex code)",
+            ),
+        ]
+
+        label_font = tkfont.Font(family="Arial", size=12, weight="bold")
+        desc_font = tkfont.Font(family="Arial", size=10)
+        entry_font = tkfont.Font(family="Arial", size=12)
+        browse_font = tkfont.Font(family="Arial", size=10)
+
+        for i, (key, field_type, label, description) in enumerate(settings_schema):
+            # Container for each setting
+            row_frame = tk.Frame(
+                self.scrollable_frame, bg="#ffffff", relief="groove", bd=1
+            )
+            row_frame.grid(row=i, column=0, sticky="ew", padx=10, pady=5)
+            row_frame.grid_columnconfigure(1, weight=1)
+            self.scrollable_frame.grid_columnconfigure(0, weight=1)
+
+            # Label
+            lbl = tk.Label(
+                row_frame,
+                text=label,
+                font=label_font,
+                bg="#ffffff",
+                fg="#2c3e50",
+                anchor="w",
+            )
+            lbl.grid(row=0, column=0, sticky="w", padx=10, pady=(10, 0))
+
+            # Description
+            desc_lbl = tk.Label(
+                row_frame,
+                text=description,
+                font=desc_font,
+                bg="#ffffff",
+                fg="#7f8c8d",
+                anchor="w",
+            )
+            desc_lbl.grid(row=1, column=0, sticky="w", padx=10, pady=(0, 5))
+
+            # Input field
+            current_value = self.config.get(key, "")
+
+            if field_type == "bool":
+                var = tk.BooleanVar(value=bool(current_value))
+                widget = tk.Checkbutton(
+                    row_frame,
+                    variable=var,
+                    bg="#ffffff",
+                    activebackground="#ffffff",
+                    font=entry_font,
+                )
+                widget.var = var  # Store reference to variable
+                widget.grid(row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10)
+            elif field_type in ("file", "folder"):
+                # Frame to hold entry and browse button
+                path_frame = tk.Frame(row_frame, bg="#ffffff")
+                path_frame.grid(
+                    row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10
+                )
+
+                widget = tk.Entry(path_frame, font=entry_font, width=35)
+                widget.insert(
+                    0, str(current_value) if current_value is not None else ""
+                )
+                widget.pack(side="left", padx=(0, 5))
+
+                # Browse button
+                browse_btn = tk.Button(
+                    path_frame,
+                    text="📁 Browse",
+                    font=browse_font,
+                    bg="#3498db",
+                    fg="white",
+                    relief="flat",
+                    cursor="hand2",
+                    command=lambda w=widget, ft=field_type: self._browse_path(w, ft),
+                )
+                browse_btn.pack(side="left")
+            else:
+                widget = tk.Entry(row_frame, font=entry_font, width=40)
+                widget.insert(
+                    0, str(current_value) if current_value is not None else ""
+                )
+                widget.grid(row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10)
+
+            self.entries[key] = (widget, field_type)
+
+    def _browse_path(self, entry_widget: tk.Entry, path_type: str) -> None:
+        """Open file/folder browser and update entry widget."""
+        # Get initial directory from current entry value
+        current_path = entry_widget.get()
+        initial_dir = None
+        if current_path:
+            full_path = self.config.project_root / current_path
+            if full_path.exists():
+                if full_path.is_dir():
+                    initial_dir = str(full_path)
+                else:
+                    initial_dir = str(full_path.parent)
+
+        if initial_dir is None:
+            initial_dir = str(self.config.project_root)
+
+        if path_type == "folder":
+            selected = filedialog.askdirectory(
+                initialdir=initial_dir,
+                title="Select Folder",
+            )
+        else:  # file
+            selected = filedialog.askopenfilename(
+                initialdir=initial_dir,
+                title="Select File",
+                filetypes=[
+                    ("Image files", "*.png *.jpg *.jpeg *.gif *.bmp *.ico"),
+                    ("All files", "*.*"),
+                ],
+            )
+
+        if selected:
+            # Try to make the path relative to project root
+            try:
+                selected_path = Path(selected)
+                relative_path = selected_path.relative_to(self.config.project_root)
+                selected = str(relative_path).replace("\\", "/")
+            except ValueError:
+                # Path is not relative to project root, use absolute
+                selected = selected.replace("\\", "/")
+
+            # Update entry widget
+            entry_widget.delete(0, tk.END)
+            entry_widget.insert(0, selected)
+
+    def _save_settings(self) -> None:
+        """Save the settings to config.yaml."""
+        for key, (widget, field_type) in self.entries.items():
+            if field_type == "bool":
+                value = widget.var.get()
+            elif field_type == "int":
+                try:
+                    value = int(widget.get())
+                except ValueError:
+                    value = 0
+            else:
+                value = widget.get()
+
+            self.config.set(key, value)
+
+        self.config.save()
+
+        # Show save confirmation
+        self._show_save_confirmation()
+
+    def _show_save_confirmation(self) -> None:
+        """Show a brief confirmation that settings were saved."""
+        confirm_label = tk.Label(
+            self,
+            text="✓ Settings saved!",
+            font=tkfont.Font(family="Arial", size=14, weight="bold"),
+            bg="#27ae60",
+            fg="white",
+            padx=20,
+            pady=10,
+        )
+        confirm_label.place(relx=0.5, rely=0.9, anchor="center")
+        self.after(2000, confirm_label.destroy)
+
+    def show(self) -> None:
+        """Refresh settings values when view is shown."""
+        # Update all entry fields with current config values
+        for key, (widget, field_type) in self.entries.items():
+            current_value = self.config.get(key, "")
+            if field_type == "bool":
+                widget.var.set(bool(current_value))
+            else:
+                widget.delete(0, tk.END)
+                widget.insert(
+                    0, str(current_value) if current_value is not None else ""
+                )
+
+    def hide(self) -> None:
+        """Unbind mousewheel when hiding."""
+        pass
 
 
 class CountingGameView(BaseView):
@@ -1653,6 +2031,7 @@ class GameController:
         """Create all game views."""
         view_classes = {
             "main_menu": MainMenuView,
+            "settings": SettingsView,
             "counting": CountingGameView,
             "counting_results": CountingResultsView,
             "addition": AdditionGameView,

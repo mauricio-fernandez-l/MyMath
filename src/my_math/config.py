@@ -149,6 +149,36 @@ class Config:
         """Get the gap in pixels between groups of 5 when displaying 10 images."""
         return self.get("game.group_gap", 15)
 
+    def set(self, key: str, value: Any) -> None:
+        """Set a configuration value by key (supports nested keys with dot notation).
+
+        Args:
+            key: Configuration key (e.g., 'sound.enabled' or 'title')
+            value: Value to set
+        """
+        keys = key.split(".")
+        config = self._config
+
+        # Navigate to the parent of the key we want to set
+        for k in keys[:-1]:
+            if k not in config:
+                config[k] = {}
+            config = config[k]
+
+        # Set the value
+        config[keys[-1]] = value
+
+    def save(self) -> None:
+        """Save the current configuration to the YAML file."""
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            yaml.dump(
+                self._config,
+                f,
+                default_flow_style=False,
+                allow_unicode=True,
+                sort_keys=False,
+            )
+
     @property
     def videos_folder(self) -> Path:
         """Get the videos folder path."""
