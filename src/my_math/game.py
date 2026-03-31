@@ -267,6 +267,15 @@ class MainMenuView(BaseView):
         )
         self.subtraction_btn.pack(pady=15)
 
+        # Multiplication exploration button
+        self.multiplication_btn = tk.Button(
+            button_frame,
+            text="✖️",
+            command=lambda: self.controller.show_view("multiplication_explore"),
+            **button_config,
+        )
+        self.multiplication_btn.pack(pady=15)
+
         # Settings button
         self.settings_btn = tk.Button(
             button_frame,
@@ -2855,6 +2864,394 @@ class SubtractionResultsView(BaseView):
         self.after(100, lambda: self.video_player.play(video_path))
 
 
+class MultiplicationExploreView(BaseView):
+    """Exploration view for visualizing multiplication as repeated groups."""
+
+    def __init__(self, parent: tk.Widget, controller: "GameController"):
+        super().__init__(parent, controller)
+        self.available_images: list[Path] = []
+        self.images: list[ImageTk.PhotoImage] = []
+        self.current_image_path: Path | None = None
+        self.factor1_var = tk.StringVar(value="3")
+        self.factor2_var = tk.StringVar(value="1")
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Set up the multiplication exploration UI."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        header = tk.Frame(self, bg="#f0f0f0")
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
+        header.grid_columnconfigure(1, weight=1)
+
+        back_font = tkfont.Font(family="Arial", size=14)
+        self.back_btn = tk.Button(
+            header,
+            text="⬅️",
+            font=back_font,
+            bg="#95a5a6",
+            fg="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self.controller.show_view("main_menu"),
+        )
+        self.back_btn.grid(row=0, column=0, sticky="w")
+
+        title_font = tkfont.Font(family="Arial", size=24, weight="bold")
+        title_label = tk.Label(
+            header,
+            text="✖️ Explore",
+            font=title_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
+        )
+        title_label.grid(row=0, column=1)
+
+        self.image_frame = tk.Frame(self, bg="#ecf0f1")
+        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.image_frame.grid_rowconfigure(0, weight=1)
+        self.image_frame.grid_columnconfigure(0, weight=1)
+
+        controls = tk.Frame(self, bg="#f0f0f0")
+        controls.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 16))
+        controls.grid_columnconfigure(0, weight=1)
+        controls.grid_columnconfigure(1, weight=0)
+        controls.grid_columnconfigure(2, weight=0)
+        controls.grid_columnconfigure(3, weight=0)
+        controls.grid_columnconfigure(4, weight=0)
+        controls.grid_columnconfigure(5, weight=0)
+        controls.grid_columnconfigure(6, weight=1)
+
+        result_font = tkfont.Font(family="Arial", size=28, weight="bold")
+        adjust_font = tkfont.Font(family="Arial", size=18, weight="bold")
+
+        self.factor1_label = tk.Label(
+            controls,
+            text="3",
+            font=result_font,
+            bg="#f0f0f0",
+            fg=self.config.game_color1,
+            width=2,
+        )
+        self.factor1_label.grid(row=0, column=1, padx=8)
+
+        tk.Label(
+            controls,
+            text="×",
+            font=result_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
+        ).grid(row=0, column=2, padx=4)
+
+        self.factor2_label = tk.Label(
+            controls,
+            text="1",
+            font=result_font,
+            bg="#f0f0f0",
+            fg=self.config.game_color2,
+            width=2,
+        )
+        self.factor2_label.grid(row=0, column=3, padx=8)
+
+        tk.Label(
+            controls,
+            text="=",
+            font=result_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
+        ).grid(row=0, column=4, padx=4)
+
+        self.result_label = tk.Label(
+            controls,
+            text="3",
+            font=result_font,
+            bg="#f0f0f0",
+            fg=self.config.game_color3,
+            width=3,
+        )
+        self.result_label.grid(row=0, column=5, padx=8)
+
+        factor1_buttons = tk.Frame(controls, bg="#f0f0f0")
+        factor1_buttons.grid(row=1, column=1, pady=(8, 0))
+        tk.Button(
+            factor1_buttons,
+            text="−",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color1,
+            fg="white",
+            activebackground=self.config.game_color1,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(1, -1),
+        ).pack(side="left", padx=(0, 6))
+        tk.Button(
+            factor1_buttons,
+            text="+",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color1,
+            fg="white",
+            activebackground=self.config.game_color1,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(1, 1),
+        ).pack(side="left")
+
+        factor2_buttons = tk.Frame(controls, bg="#f0f0f0")
+        factor2_buttons.grid(row=1, column=3, pady=(8, 0))
+        tk.Button(
+            factor2_buttons,
+            text="−",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color2,
+            fg="white",
+            activebackground=self.config.game_color2,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(2, -1),
+        ).pack(side="left", padx=(0, 6))
+        tk.Button(
+            factor2_buttons,
+            text="+",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color2,
+            fg="white",
+            activebackground=self.config.game_color2,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(2, 1),
+        ).pack(side="left")
+
+    def _load_available_images(self) -> None:
+        """Load list of available images from the images folder."""
+        images_folder = self.config.images_folder
+        self.available_images = []
+
+        if images_folder.exists():
+            for ext in ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp"]:
+                self.available_images.extend(images_folder.glob(ext))
+
+    def _parse_factor(self, raw_value: str, minimum: int, maximum: int) -> int:
+        """Parse and clamp a spinbox value."""
+        try:
+            value = int(raw_value)
+        except ValueError:
+            value = minimum
+        return max(minimum, min(maximum, value))
+
+    def _get_factors(self) -> tuple[int, int]:
+        """Return the two clamped multiplication factors."""
+        factor1 = self._parse_factor(self.factor1_var.get(), 1, 10)
+        factor2 = self._parse_factor(self.factor2_var.get(), 1, 5)
+
+        if self.factor1_var.get() != str(factor1):
+            self.factor1_var.set(str(factor1))
+        if self.factor2_var.get() != str(factor2):
+            self.factor2_var.set(str(factor2))
+
+        return factor1, factor2
+
+    def _adjust_factor(self, factor_index: int, delta: int) -> None:
+        """Increase or decrease one factor and redraw the visualization."""
+        if factor_index == 1:
+            current = self._parse_factor(self.factor1_var.get(), 1, 10)
+            self.factor1_var.set(str(max(1, min(10, current + delta))))
+        else:
+            current = self._parse_factor(self.factor2_var.get(), 1, 5)
+            self.factor2_var.set(str(max(1, min(5, current + delta))))
+        self._update_visualization()
+
+    def _calculate_image_size(self, factor2: int) -> int:
+        """Calculate image size for a fixed 10-column multiplication grid."""
+        base_size = self.config.game_image_size
+
+        self.image_frame.update_idletasks()
+        frame_height = self.image_frame.winfo_height()
+        frame_width = self.image_frame.winfo_width()
+
+        if frame_height < 50:
+            frame_height = 500
+        if frame_width < 50:
+            frame_width = 900
+
+        display_rows = max(3, factor2)
+        available_height = frame_height - 40
+        available_width = frame_width - 80
+
+        max_height_per_image = available_height // max(display_rows, 1)
+        max_width_per_image = available_width // 10
+        calculated_size = min(max_height_per_image, max_width_per_image, base_size)
+
+        return max(24, int(calculated_size * 0.85))
+
+    def _draw_multiplication(self, image_path: Path) -> None:
+        """Draw the multiplication grid using the selected image."""
+        factor1, factor2 = self._get_factors()
+        img_size = self._calculate_image_size(factor2)
+        display_rows = max(3, factor2)
+
+        img = Image.open(image_path)
+        width, height = img.size
+        if width > height:
+            new_width = img_size
+            new_height = int(height * img_size / width)
+        else:
+            new_height = img_size
+            new_width = int(width * img_size / height)
+        resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        border = max(3, img_size // 18)
+        bordered = Image.new(
+            "RGBA",
+            (new_width + 2 * border, new_height + 2 * border),
+            self.config.game_color1,
+        )
+        bordered.paste(resized, (border, border))
+
+        photo_normal = ImageTk.PhotoImage(resized)
+        photo_color1 = ImageTk.PhotoImage(bordered)
+        self.images.extend([photo_normal, photo_color1])
+
+        inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+        inner_frame.grid(row=0, column=0)
+
+        cell_width = new_width + 2 * border
+        cell_height = new_height + 2 * border
+
+        for row_idx in range(display_rows):
+            row_frame = tk.Frame(
+                inner_frame,
+                bg="#ecf0f1",
+                highlightbackground=(
+                    self.config.game_color2 if row_idx < factor2 else "#d6dbe0"
+                ),
+                highlightthickness=2 if row_idx < factor2 else 1,
+            )
+            row_frame.grid(row=row_idx, column=0, pady=6)
+
+            content_frame = tk.Frame(row_frame, bg="#ecf0f1")
+            content_frame.pack(padx=8, pady=8)
+
+            for col_idx in range(10):
+                cell_frame = tk.Frame(
+                    content_frame,
+                    width=cell_width,
+                    height=cell_height,
+                    bg="#ecf0f1",
+                    highlightbackground="#dfe6eb",
+                    highlightthickness=1,
+                )
+                cell_frame.grid(row=0, column=col_idx, padx=4, pady=4)
+                cell_frame.grid_propagate(False)
+
+                if row_idx < factor2 and col_idx < factor1:
+                    label = tk.Label(cell_frame, image=photo_color1, bg="#ecf0f1")
+                    label.place(relx=0.5, rely=0.5, anchor="center")
+
+    def _draw_multiplication_fallback(self) -> None:
+        """Draw the multiplication grid using colored circles as fallback."""
+        factor1, factor2 = self._get_factors()
+        img_size = self._calculate_image_size(factor2)
+        display_rows = max(3, factor2)
+        fill_colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
+
+        inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+        inner_frame.grid(row=0, column=0)
+
+        border_width = max(3, img_size // 18)
+
+        for row_idx in range(display_rows):
+            row_frame = tk.Frame(
+                inner_frame,
+                bg="#ecf0f1",
+                highlightbackground=(
+                    self.config.game_color2 if row_idx < factor2 else "#d6dbe0"
+                ),
+                highlightthickness=2 if row_idx < factor2 else 1,
+            )
+            row_frame.grid(row=row_idx, column=0, pady=6)
+
+            content_frame = tk.Frame(row_frame, bg="#ecf0f1")
+            content_frame.pack(padx=8, pady=8)
+
+            for col_idx in range(10):
+                cell_frame = tk.Frame(
+                    content_frame,
+                    width=img_size,
+                    height=img_size,
+                    bg="#ecf0f1",
+                    highlightbackground="#dfe6eb",
+                    highlightthickness=1,
+                )
+                cell_frame.grid(row=0, column=col_idx, padx=4, pady=4)
+                cell_frame.grid_propagate(False)
+
+                if row_idx < factor2 and col_idx < factor1:
+                    canvas = tk.Canvas(
+                        cell_frame,
+                        width=img_size,
+                        height=img_size,
+                        bg="#ecf0f1",
+                        highlightthickness=0,
+                    )
+                    fill_color = fill_colors[(row_idx * factor1 + col_idx) % len(fill_colors)]
+                    canvas.create_oval(
+                        4,
+                        4,
+                        img_size - 4,
+                        img_size - 4,
+                        fill=fill_color,
+                        outline=self.config.game_color1,
+                        width=border_width,
+                    )
+                    canvas.place(relx=0.5, rely=0.5, anchor="center")
+
+    def _update_visualization(self) -> None:
+        """Update the multiplication equation and image grid."""
+        factor1, factor2 = self._get_factors()
+        result = factor1 * factor2
+
+        self.factor1_label.config(text=str(factor1), fg=self.config.game_color1)
+        self.factor2_label.config(text=str(factor2), fg=self.config.game_color2)
+        self.result_label.config(text=str(result), fg=self.config.game_color3)
+
+        for widget in self.image_frame.winfo_children():
+            widget.destroy()
+        self.images.clear()
+
+        if self.current_image_path is not None:
+            try:
+                self._draw_multiplication(self.current_image_path)
+                return
+            except Exception as error:
+                print(f"Error loading multiplication image: {error}")
+
+        self._draw_multiplication_fallback()
+
+    def show(self) -> None:
+        """Prepare the exploration mode when the view is shown."""
+        self._load_available_images()
+        if self.available_images:
+            self.current_image_path = random.choice(self.available_images)
+        else:
+            self.current_image_path = None
+        self._update_visualization()
+
+
 class GameController:
     """Main game controller managing views and game state."""
 
@@ -2916,6 +3313,7 @@ class GameController:
             "settings": SettingsView,
             "counting": CountingGameView,
             "counting_results": CountingResultsView,
+            "multiplication_explore": MultiplicationExploreView,
             "addition": AdditionGameView,
             "addition_results": AdditionResultsView,
             "subtraction": SubtractionGameView,
