@@ -3208,7 +3208,9 @@ class MultiplicationExploreView(BaseView):
                         bg="#ecf0f1",
                         highlightthickness=0,
                     )
-                    fill_color = fill_colors[(row_idx * factor1 + col_idx) % len(fill_colors)]
+                    fill_color = fill_colors[
+                        (row_idx * factor1 + col_idx) % len(fill_colors)
+                    ]
                     canvas.create_oval(
                         4,
                         4,
