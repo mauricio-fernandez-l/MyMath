@@ -149,6 +149,11 @@ class Config:
         """Get the gap in pixels between groups of 5 when displaying 10 images."""
         return self.get("game.group_gap", 15)
 
+    @property
+    def game_hint_delay(self) -> int:
+        """Get the hint delay in milliseconds."""
+        return self.get("game.hint_delay_ms", 3000)
+
     def set(self, key: str, value: Any) -> None:
         """Set a configuration value by key (supports nested keys with dot notation).
 
