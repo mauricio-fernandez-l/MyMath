@@ -6,6 +6,7 @@ import sys
 import tkinter as tk
 from importlib.metadata import version as pkg_version
 from pathlib import Path
+from tkinter import colorchooser
 from tkinter import filedialog
 from tkinter import font as tkfont
 from typing import Callable
@@ -224,7 +225,7 @@ class MainMenuView(BaseView):
         button_frame.grid(row=1, column=0, pady=20)
 
         # Button style
-        button_color = self.config.game_button_color
+        button_color = self.config.game_color3
         # Calculate darker shade for active state
         button_font = tkfont.Font(family="Arial", size=24, weight="bold")
         button_config = {
@@ -420,7 +421,7 @@ class SettingsView(BaseView):
         """Build the settings input fields based on config structure."""
         # Define the settings fields with their types and descriptions
         # Format: (key, field_type, label, description)
-        # field_type can be: str, int, bool, file, folder
+        # field_type can be: str, int, bool, file, folder, color
         settings_schema = [
             ("title", "str", "Game Title", "The title displayed in the window"),
             ("icon_image", "file", "Icon Image", "Path to the icon image file"),
@@ -498,10 +499,34 @@ class SettingsView(BaseView):
                 "Delay before showing visual hints in milliseconds",
             ),
             (
-                "game.button_color",
-                "str",
-                "Button Color",
-                "Color for game mode buttons (hex code)",
+                "game.color1",
+                "color",
+                "Color 1",
+                "Color for the first number (hex code)",
+            ),
+            (
+                "game.color2",
+                "color",
+                "Color 2",
+                "Color for the second number and hint borders (hex code)",
+            ),
+            (
+                "game.color3",
+                "color",
+                "Color 3",
+                "Color for result placeholders and answer buttons (hex code)",
+            ),
+            (
+                "game.correct_color",
+                "color",
+                "Correct Color",
+                "Color for correct answers and positive progress (hex code)",
+            ),
+            (
+                "game.incorrect_color",
+                "color",
+                "Incorrect Color",
+                "Color for incorrect answers and warning feedback (hex code)",
             ),
         ]
 
@@ -580,6 +605,29 @@ class SettingsView(BaseView):
                     command=lambda w=widget, ft=field_type: self._browse_path(w, ft),
                 )
                 browse_btn.pack(side="left")
+            elif field_type == "color":
+                color_frame = tk.Frame(row_frame, bg="#ffffff")
+                color_frame.grid(
+                    row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10
+                )
+
+                widget = tk.Entry(color_frame, font=entry_font, width=20)
+                widget.insert(
+                    0, str(current_value) if current_value is not None else ""
+                )
+                widget.pack(side="left", padx=(0, 5))
+
+                choose_btn = tk.Button(
+                    color_frame,
+                    text="🎨 Choose",
+                    font=browse_font,
+                    bg="#3498db",
+                    fg="white",
+                    relief="flat",
+                    cursor="hand2",
+                    command=lambda w=widget: self._choose_color(w),
+                )
+                choose_btn.pack(side="left")
             else:
                 widget = tk.Entry(row_frame, font=entry_font, width=40)
                 widget.insert(
@@ -633,6 +681,21 @@ class SettingsView(BaseView):
             # Update entry widget
             entry_widget.delete(0, tk.END)
             entry_widget.insert(0, selected)
+
+    def _choose_color(self, entry_widget: tk.Entry) -> None:
+        """Open color chooser and update entry widget with hex color code."""
+        current_value = entry_widget.get().strip()
+        initial_color = current_value if current_value else None
+
+        _, hex_color = colorchooser.askcolor(
+            color=initial_color,
+            title="Choose Color",
+            parent=self,
+        )
+
+        if hex_color:
+            entry_widget.delete(0, tk.END)
+            entry_widget.insert(0, hex_color.upper())
 
     def _save_settings(self) -> None:
         """Save the settings to config.yaml."""
@@ -790,7 +853,11 @@ class CountingGameView(BaseView):
         """Update a progress box color based on answer correctness."""
         if 0 < round_num <= len(self.progress_boxes):
             box = self.progress_boxes[round_num - 1]
-            color = "#2ecc71" if is_correct else "#e74c3c"  # Green or Red
+            color = (
+                self.config.game_correct_color
+                if is_correct
+                else self.config.game_incorrect_color
+            )
             box.delete("box")
             box_size = 20
             box.create_rectangle(
@@ -799,7 +866,7 @@ class CountingGameView(BaseView):
                 box_size - 2,
                 box_size - 2,
                 fill=color,
-                outline="#27ae60" if is_correct else "#c0392b",
+                outline=color,
                 tags="box",
             )
 
@@ -989,7 +1056,13 @@ class CountingGameView(BaseView):
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
         inner_frame.grid(row=0, column=0)  # Centered via grid config
 
-        colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
+        colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
         color_idx = 0
 
         # Display shapes in groups (each group in a row)
@@ -1036,6 +1109,7 @@ class CountingGameView(BaseView):
 
         # Create buttons
         button_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        button_color = self.config.game_color3
 
         for answer in answers:
             btn = tk.Button(
@@ -1044,9 +1118,9 @@ class CountingGameView(BaseView):
                 font=button_font,
                 width=4,
                 height=1,
-                bg="#3498db",
+                bg=button_color,
                 fg="white",
-                activebackground="#2980b9",
+                activebackground=button_color,
                 activeforeground="white",
                 relief="flat",
                 cursor="hand2",
@@ -1080,9 +1154,9 @@ class CountingGameView(BaseView):
         for btn in self.answer_buttons:
             btn_answer = int(btn.cget("text"))
             if btn_answer == self.correct_answer:
-                btn.config(bg="#2ecc71")  # Green for correct
+                btn.config(bg=self.config.game_correct_color)
             elif btn_answer == answer and not is_correct:
-                btn.config(bg="#e74c3c")  # Red for wrong selection
+                btn.config(bg=self.config.game_incorrect_color)
 
         # Play sound only for correct answers (positive reinforcement)
         if is_correct:
@@ -1245,7 +1319,7 @@ class CountingResultsView(BaseView):
             text=score_text,
             font=score_font,
             bg="#f0f0f0",
-            fg="#2ecc71",
+            fg=self.config.game_correct_color,
         )
         score_label.pack(pady=(0, 30))
 
@@ -1256,7 +1330,11 @@ class CountingResultsView(BaseView):
         result_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
         for idx, entry in enumerate(self.history):
-            color = "#2ecc71" if entry["is_correct"] else "#e74c3c"
+            color = (
+                self.config.game_correct_color
+                if entry["is_correct"]
+                else self.config.game_incorrect_color
+            )
 
             frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
             row = idx // 5
@@ -1414,7 +1492,11 @@ class AdditionGameView(BaseView):
         """Update a progress box color based on answer correctness."""
         if 0 < round_num <= len(self.progress_boxes):
             box = self.progress_boxes[round_num - 1]
-            color = "#2ecc71" if is_correct else "#e74c3c"  # Green or Red
+            color = (
+                self.config.game_correct_color
+                if is_correct
+                else self.config.game_incorrect_color
+            )
             box.delete("box")
             box_size = 20
             box.create_rectangle(
@@ -1423,7 +1505,7 @@ class AdditionGameView(BaseView):
                 box_size - 2,
                 box_size - 2,
                 fill=color,
-                outline="#27ae60" if is_correct else "#c0392b",
+                outline=color,
                 tags="box",
             )
 
@@ -1508,6 +1590,9 @@ class AdditionGameView(BaseView):
         try:
             total_count = self.num1 + self.num2
             img_size = self._calculate_image_size(total_count)
+            color1 = self.config.game_color1
+            color2 = self.config.game_color2
+            color3 = self.config.game_color3
 
             # Load image and resize preserving aspect ratio
             img = Image.open(image_path)
@@ -1536,7 +1621,7 @@ class AdditionGameView(BaseView):
                 text=str(self.num1),
                 font=number_font,
                 bg="#ecf0f1",
-                fg="#3498db",
+                fg=color1,
             )
             num1_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1569,7 +1654,7 @@ class AdditionGameView(BaseView):
                 text=str(self.num2),
                 font=number_font,
                 bg="#ecf0f1",
-                fg="#3498db",
+                fg=color2,
             )
             num2_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1596,9 +1681,9 @@ class AdditionGameView(BaseView):
 
             col += 1
 
-            # Question mark (will be replaced by answer buttons)
+            # Result placeholder (will be replaced by answer buttons)
             self.question_label = tk.Label(
-                inner_frame, text="❓", font=number_font, bg="#ecf0f1", fg="#e74c3c"
+                inner_frame, text="x", font=number_font, bg="#ecf0f1", fg=color3
             )
             self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -1610,6 +1695,9 @@ class AdditionGameView(BaseView):
         """Display addition with colored circles as fallback."""
         total_count = self.num1 + self.num2
         img_size = self._calculate_image_size(total_count)
+        color1 = self.config.game_color1
+        color2 = self.config.game_color2
+        color3 = self.config.game_color3
 
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
         inner_frame.grid(row=0, column=0)  # Centered via grid config
@@ -1617,7 +1705,13 @@ class AdditionGameView(BaseView):
         number_font = tkfont.Font(family="Arial", size=36, weight="bold")
         plus_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
-        colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
+        colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
 
         col = 0
 
@@ -1627,7 +1721,7 @@ class AdditionGameView(BaseView):
             text=str(self.num1),
             font=number_font,
             bg="#ecf0f1",
-            fg="#3498db",
+            fg=color1,
         )
         num1_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1666,7 +1760,7 @@ class AdditionGameView(BaseView):
             text=str(self.num2),
             font=number_font,
             bg="#ecf0f1",
-            fg="#3498db",
+            fg=color2,
         )
         num2_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1699,9 +1793,9 @@ class AdditionGameView(BaseView):
 
         col += 1
 
-        # Question mark
+        # Result placeholder
         self.question_label = tk.Label(
-            inner_frame, text="❓", font=number_font, bg="#ecf0f1", fg="#e74c3c"
+            inner_frame, text="x", font=number_font, bg="#ecf0f1", fg=color3
         )
         self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -1724,7 +1818,7 @@ class AdditionGameView(BaseView):
 
         # Create buttons
         button_font = tkfont.Font(family="Arial", size=36, weight="bold")
-        button_color = self.config.game_button_color
+        button_color = self.config.game_color3
 
         for answer in answers:
             btn = tk.Button(
@@ -1771,9 +1865,9 @@ class AdditionGameView(BaseView):
         for btn in self.answer_buttons:
             btn_answer = int(btn.cget("text"))
             if btn_answer == self.correct_answer:
-                btn.config(bg="#2ecc71")  # Green for correct
+                btn.config(bg=self.config.game_correct_color)
             elif btn_answer == answer and not is_correct:
-                btn.config(bg="#e74c3c")  # Red for wrong selection
+                btn.config(bg=self.config.game_incorrect_color)
 
         # Play sound only for correct answers (positive reinforcement)
         if is_correct:
@@ -1936,7 +2030,7 @@ class AdditionResultsView(BaseView):
             text=score_text,
             font=score_font,
             bg="#f0f0f0",
-            fg="#2ecc71",
+            fg=self.config.game_correct_color,
         )
         score_label.pack(pady=(0, 30))
 
@@ -1947,7 +2041,11 @@ class AdditionResultsView(BaseView):
         result_font = tkfont.Font(family="Arial", size=20, weight="bold")
 
         for idx, entry in enumerate(self.history):
-            color = "#2ecc71" if entry["is_correct"] else "#e74c3c"
+            color = (
+                self.config.game_correct_color
+                if entry["is_correct"]
+                else self.config.game_incorrect_color
+            )
 
             frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
             row = idx // 5
@@ -2098,7 +2196,11 @@ class SubtractionGameView(BaseView):
         """Update a progress box color based on answer correctness."""
         if 0 < round_num <= len(self.progress_boxes):
             box = self.progress_boxes[round_num - 1]
-            color = "#2ecc71" if is_correct else "#e74c3c"
+            color = (
+                self.config.game_correct_color
+                if is_correct
+                else self.config.game_incorrect_color
+            )
             box.delete("box")
             box_size = 20
             box.create_rectangle(
@@ -2107,7 +2209,7 @@ class SubtractionGameView(BaseView):
                 box_size - 2,
                 box_size - 2,
                 fill=color,
-                outline="#27ae60" if is_correct else "#c0392b",
+                outline=color,
                 tags="box",
             )
 
@@ -2194,6 +2296,9 @@ class SubtractionGameView(BaseView):
         try:
             total_count = self.minuend + self.subtrahend
             img_size = self._calculate_image_size(total_count)
+            color1 = self.config.game_color1
+            color2 = self.config.game_color2
+            color3 = self.config.game_color3
 
             img = Image.open(image_path)
             width, height = img.size
@@ -2209,9 +2314,7 @@ class SubtractionGameView(BaseView):
             border = max(3, img_size // 20)
             bordered_w = new_width + 2 * border
             bordered_h = new_height + 2 * border
-            bordered_pil = Image.new(
-                "RGBA", (bordered_w, bordered_h), (231, 76, 60, 255)
-            )
+            bordered_pil = Image.new("RGBA", (bordered_w, bordered_h), color2)
             bordered_pil.paste(img_normal, (border, border))
             self._bordered_photo = ImageTk.PhotoImage(bordered_pil)
 
@@ -2229,7 +2332,7 @@ class SubtractionGameView(BaseView):
                 text=str(self.minuend),
                 font=number_font,
                 bg="#ecf0f1",
-                fg="#3498db",
+                fg=color1,
             )
             minuend_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -2271,7 +2374,7 @@ class SubtractionGameView(BaseView):
                 text=str(self.subtrahend),
                 font=number_font,
                 bg="#ecf0f1",
-                fg="#e74c3c",
+                fg=color2,
             )
             sub_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -2303,13 +2406,13 @@ class SubtractionGameView(BaseView):
 
             col += 1
 
-            # --- Question mark ---
+            # --- Result placeholder ---
             self.question_label = tk.Label(
                 inner_frame,
-                text="❓",
+                text="x",
                 font=number_font,
                 bg="#ecf0f1",
-                fg="#e74c3c",
+                fg=color3,
             )
             self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -2321,6 +2424,9 @@ class SubtractionGameView(BaseView):
         """Display subtraction with colored circles as fallback."""
         total_count = self.minuend + self.subtrahend
         img_size = self._calculate_image_size(total_count)
+        color1 = self.config.game_color1
+        color2 = self.config.game_color2
+        color3 = self.config.game_color3
 
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
         inner_frame.grid(row=0, column=0)
@@ -2328,8 +2434,14 @@ class SubtractionGameView(BaseView):
         number_font = tkfont.Font(family="Arial", size=36, weight="bold")
         minus_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
-        colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
-        self._fallback_border_color = "#e74c3c"
+        colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
+        self._fallback_border_color = color2
         self._fallback_border_width = max(3, img_size // 20)
         self._fallback_img_size = img_size
 
@@ -2341,7 +2453,7 @@ class SubtractionGameView(BaseView):
             text=str(self.minuend),
             font=number_font,
             bg="#ecf0f1",
-            fg="#3498db",
+            fg=color1,
         )
         minuend_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -2396,7 +2508,7 @@ class SubtractionGameView(BaseView):
             text=str(self.subtrahend),
             font=number_font,
             bg="#ecf0f1",
-            fg="#e74c3c",
+            fg=color2,
         )
         sub_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -2442,13 +2554,13 @@ class SubtractionGameView(BaseView):
 
         col += 1
 
-        # --- Question mark ---
+        # --- Result placeholder ---
         self.question_label = tk.Label(
             inner_frame,
-            text="❓",
+            text="x",
             font=number_font,
             bg="#ecf0f1",
-            fg="#e74c3c",
+            fg=color3,
         )
         self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -2499,7 +2611,7 @@ class SubtractionGameView(BaseView):
         random.shuffle(answers)
 
         button_font = tkfont.Font(family="Arial", size=36, weight="bold")
-        button_color = self.config.game_button_color
+        button_color = self.config.game_color3
 
         for answer in answers:
             btn = tk.Button(
@@ -2542,9 +2654,9 @@ class SubtractionGameView(BaseView):
         for btn in self.answer_buttons:
             btn_answer = int(btn.cget("text"))
             if btn_answer == self.correct_answer:
-                btn.config(bg="#2ecc71")
+                btn.config(bg=self.config.game_correct_color)
             elif btn_answer == answer and not is_correct:
-                btn.config(bg="#e74c3c")
+                btn.config(bg=self.config.game_incorrect_color)
 
         if is_correct:
             self.controller.sound_player.play_random_from_folder(
@@ -2691,7 +2803,7 @@ class SubtractionResultsView(BaseView):
             text=score_text,
             font=score_font,
             bg="#f0f0f0",
-            fg="#2ecc71",
+            fg=self.config.game_correct_color,
         )
         score_label.pack(pady=(0, 30))
 
@@ -2701,7 +2813,11 @@ class SubtractionResultsView(BaseView):
         result_font = tkfont.Font(family="Arial", size=20, weight="bold")
 
         for idx, entry in enumerate(self.history):
-            color = "#2ecc71" if entry["is_correct"] else "#e74c3c"
+            color = (
+                self.config.game_correct_color
+                if entry["is_correct"]
+                else self.config.game_incorrect_color
+            )
 
             frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
             row = idx // 5
