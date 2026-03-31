@@ -58,7 +58,12 @@ game:
   rounds: 10          # Rounds per game session
   image_size: 150     # Image size in pixels
   delay_ms: 1000      # Delay between stages
-  button_color: "#3498db"  # Button color
+  hint_delay_ms: 3000 # Delay before showing hints
+  color1: "#4C7CF0"   # First number color
+  color2: "#F4A261"   # Second number and hint border color
+  color3: "#2EC4B6"   # Result and answer button color
+  correct_color: "#00FF00"   # Correct answer feedback color
+  incorrect_color: "#FDE68A" # Incorrect answer feedback color
 ```
 
 ## Project Structure

@@ -140,14 +140,39 @@ class Config:
         return self.get("game.delay_ms", 1500)
 
     @property
-    def game_button_color(self) -> str:
-        """Get the button color for game modes."""
-        return self.get("game.button_color", "#3498db")
+    def game_color1(self) -> str:
+        """Get the color for the left/first number in arithmetic modes."""
+        return self.get("game.color1", "#4C7CF0")
+
+    @property
+    def game_color2(self) -> str:
+        """Get the color for the right/second number and subtraction hints."""
+        return self.get("game.color2", "#F4A261")
+
+    @property
+    def game_color3(self) -> str:
+        """Get the color for result placeholders and answer buttons."""
+        return self.get("game.color3", "#2EC4B6")
+
+    @property
+    def game_correct_color(self) -> str:
+        """Get the color used for correct answers and positive progress."""
+        return self.get("game.correct_color", "#00FF00")
+
+    @property
+    def game_incorrect_color(self) -> str:
+        """Get the color used for incorrect answers and warning feedback."""
+        return self.get("game.incorrect_color", "#FDE68A")
 
     @property
     def game_group_gap(self) -> int:
         """Get the gap in pixels between groups of 5 when displaying 10 images."""
         return self.get("game.group_gap", 15)
+
+    @property
+    def game_hint_delay(self) -> int:
+        """Get the hint delay in milliseconds."""
+        return self.get("game.hint_delay_ms", 3000)
 
     def set(self, key: str, value: Any) -> None:
         """Set a configuration value by key (supports nested keys with dot notation).

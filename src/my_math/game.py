@@ -6,6 +6,7 @@ import sys
 import tkinter as tk
 from importlib.metadata import version as pkg_version
 from pathlib import Path
+from tkinter import colorchooser
 from tkinter import filedialog
 from tkinter import font as tkfont
 from typing import Callable
@@ -222,14 +223,16 @@ class MainMenuView(BaseView):
         # Button frame
         button_frame = tk.Frame(self, bg="#f0f0f0")
         button_frame.grid(row=1, column=0, pady=20)
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
 
         # Button style
-        button_color = self.config.game_button_color
+        button_color = self.config.game_color3
         # Calculate darker shade for active state
         button_font = tkfont.Font(family="Arial", size=24, weight="bold")
         button_config = {
             "font": button_font,
-            "width": 15,
+            "width": 11,
             "height": 2,
             "relief": "flat",
             "cursor": "hand2",
@@ -246,7 +249,7 @@ class MainMenuView(BaseView):
             command=lambda: self.controller.show_view("counting"),
             **button_config,
         )
-        self.counting_btn.pack(pady=15)
+        self.counting_btn.grid(row=0, column=0, padx=12, pady=10)
 
         # Addition game button
         self.game2_btn = tk.Button(
@@ -255,14 +258,32 @@ class MainMenuView(BaseView):
             command=lambda: self.controller.show_view("addition"),
             **button_config,
         )
-        self.game2_btn.pack(pady=15)
+        self.game2_btn.grid(row=1, column=0, padx=12, pady=10)
+
+        # Subtraction game button
+        self.subtraction_btn = tk.Button(
+            button_frame,
+            text="➖",
+            command=lambda: self.controller.show_view("subtraction"),
+            **button_config,
+        )
+        self.subtraction_btn.grid(row=2, column=0, padx=12, pady=10)
+
+        # Multiplication exploration button
+        self.multiplication_btn = tk.Button(
+            button_frame,
+            text="✖️",
+            command=lambda: self.controller.show_view("multiplication_explore"),
+            **button_config,
+        )
+        self.multiplication_btn.grid(row=3, column=0, padx=12, pady=10)
 
         # Settings button
         self.settings_btn = tk.Button(
             button_frame,
             text="⚙️ Settings",
             font=button_font,
-            width=15,
+            width=11,
             height=2,
             relief="flat",
             cursor="hand2",
@@ -272,14 +293,14 @@ class MainMenuView(BaseView):
             activeforeground="white",
             command=lambda: self.controller.show_view("settings"),
         )
-        self.settings_btn.pack(pady=15)
+        self.settings_btn.grid(row=0, column=1, padx=12, pady=10)
 
         # Exit button
         self.exit_btn = tk.Button(
             button_frame,
             text="🚪",
             font=button_font,
-            width=15,
+            width=11,
             height=2,
             relief="flat",
             cursor="hand2",
@@ -289,7 +310,7 @@ class MainMenuView(BaseView):
             activeforeground="white",
             command=self.controller.quit_game,
         )
-        self.exit_btn.pack(pady=15)
+        self.exit_btn.grid(row=1, column=1, padx=12, pady=10)
 
         # Version label at the bottom center
         try:
@@ -411,7 +432,7 @@ class SettingsView(BaseView):
         """Build the settings input fields based on config structure."""
         # Define the settings fields with their types and descriptions
         # Format: (key, field_type, label, description)
-        # field_type can be: str, int, bool, file, folder
+        # field_type can be: str, int, bool, file, folder, color
         settings_schema = [
             ("title", "str", "Game Title", "The title displayed in the window"),
             ("icon_image", "file", "Icon Image", "Path to the icon image file"),
@@ -483,10 +504,40 @@ class SettingsView(BaseView):
                 "Gap between groups of 5 images",
             ),
             (
-                "game.button_color",
-                "str",
-                "Button Color",
-                "Color for game mode buttons (hex code)",
+                "game.hint_delay_ms",
+                "int",
+                "Hint Delay (ms)",
+                "Delay before showing visual hints in milliseconds",
+            ),
+            (
+                "game.color1",
+                "color",
+                "Color 1",
+                "Color for the first number (hex code)",
+            ),
+            (
+                "game.color2",
+                "color",
+                "Color 2",
+                "Color for the second number and hint borders (hex code)",
+            ),
+            (
+                "game.color3",
+                "color",
+                "Color 3",
+                "Color for result placeholders and answer buttons (hex code)",
+            ),
+            (
+                "game.correct_color",
+                "color",
+                "Correct Color",
+                "Color for correct answers and positive progress (hex code)",
+            ),
+            (
+                "game.incorrect_color",
+                "color",
+                "Incorrect Color",
+                "Color for incorrect answers and warning feedback (hex code)",
             ),
         ]
 
@@ -565,6 +616,29 @@ class SettingsView(BaseView):
                     command=lambda w=widget, ft=field_type: self._browse_path(w, ft),
                 )
                 browse_btn.pack(side="left")
+            elif field_type == "color":
+                color_frame = tk.Frame(row_frame, bg="#ffffff")
+                color_frame.grid(
+                    row=0, column=1, rowspan=2, sticky="e", padx=10, pady=10
+                )
+
+                widget = tk.Entry(color_frame, font=entry_font, width=20)
+                widget.insert(
+                    0, str(current_value) if current_value is not None else ""
+                )
+                widget.pack(side="left", padx=(0, 5))
+
+                choose_btn = tk.Button(
+                    color_frame,
+                    text="🎨 Choose",
+                    font=browse_font,
+                    bg="#3498db",
+                    fg="white",
+                    relief="flat",
+                    cursor="hand2",
+                    command=lambda w=widget: self._choose_color(w),
+                )
+                choose_btn.pack(side="left")
             else:
                 widget = tk.Entry(row_frame, font=entry_font, width=40)
                 widget.insert(
@@ -618,6 +692,21 @@ class SettingsView(BaseView):
             # Update entry widget
             entry_widget.delete(0, tk.END)
             entry_widget.insert(0, selected)
+
+    def _choose_color(self, entry_widget: tk.Entry) -> None:
+        """Open color chooser and update entry widget with hex color code."""
+        current_value = entry_widget.get().strip()
+        initial_color = current_value if current_value else None
+
+        _, hex_color = colorchooser.askcolor(
+            color=initial_color,
+            title="Choose Color",
+            parent=self,
+        )
+
+        if hex_color:
+            entry_widget.delete(0, tk.END)
+            entry_widget.insert(0, hex_color.upper())
 
     def _save_settings(self) -> None:
         """Save the settings to config.yaml."""
@@ -775,7 +864,11 @@ class CountingGameView(BaseView):
         """Update a progress box color based on answer correctness."""
         if 0 < round_num <= len(self.progress_boxes):
             box = self.progress_boxes[round_num - 1]
-            color = "#2ecc71" if is_correct else "#e74c3c"  # Green or Red
+            color = (
+                self.config.game_correct_color
+                if is_correct
+                else self.config.game_incorrect_color
+            )
             box.delete("box")
             box_size = 20
             box.create_rectangle(
@@ -784,7 +877,7 @@ class CountingGameView(BaseView):
                 box_size - 2,
                 box_size - 2,
                 fill=color,
-                outline="#27ae60" if is_correct else "#c0392b",
+                outline=color,
                 tags="box",
             )
 
@@ -974,7 +1067,13 @@ class CountingGameView(BaseView):
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
         inner_frame.grid(row=0, column=0)  # Centered via grid config
 
-        colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
+        colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
         color_idx = 0
 
         # Display shapes in groups (each group in a row)
@@ -1021,6 +1120,7 @@ class CountingGameView(BaseView):
 
         # Create buttons
         button_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        button_color = self.config.game_color3
 
         for answer in answers:
             btn = tk.Button(
@@ -1029,9 +1129,9 @@ class CountingGameView(BaseView):
                 font=button_font,
                 width=4,
                 height=1,
-                bg="#3498db",
+                bg=button_color,
                 fg="white",
-                activebackground="#2980b9",
+                activebackground=button_color,
                 activeforeground="white",
                 relief="flat",
                 cursor="hand2",
@@ -1065,9 +1165,9 @@ class CountingGameView(BaseView):
         for btn in self.answer_buttons:
             btn_answer = int(btn.cget("text"))
             if btn_answer == self.correct_answer:
-                btn.config(bg="#2ecc71")  # Green for correct
+                btn.config(bg=self.config.game_correct_color)
             elif btn_answer == answer and not is_correct:
-                btn.config(bg="#e74c3c")  # Red for wrong selection
+                btn.config(bg=self.config.game_incorrect_color)
 
         # Play sound only for correct answers (positive reinforcement)
         if is_correct:
@@ -1230,7 +1330,7 @@ class CountingResultsView(BaseView):
             text=score_text,
             font=score_font,
             bg="#f0f0f0",
-            fg="#2ecc71",
+            fg=self.config.game_correct_color,
         )
         score_label.pack(pady=(0, 30))
 
@@ -1241,7 +1341,11 @@ class CountingResultsView(BaseView):
         result_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
         for idx, entry in enumerate(self.history):
-            color = "#2ecc71" if entry["is_correct"] else "#e74c3c"
+            color = (
+                self.config.game_correct_color
+                if entry["is_correct"]
+                else self.config.game_incorrect_color
+            )
 
             frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
             row = idx // 5
@@ -1399,7 +1503,11 @@ class AdditionGameView(BaseView):
         """Update a progress box color based on answer correctness."""
         if 0 < round_num <= len(self.progress_boxes):
             box = self.progress_boxes[round_num - 1]
-            color = "#2ecc71" if is_correct else "#e74c3c"  # Green or Red
+            color = (
+                self.config.game_correct_color
+                if is_correct
+                else self.config.game_incorrect_color
+            )
             box.delete("box")
             box_size = 20
             box.create_rectangle(
@@ -1408,7 +1516,7 @@ class AdditionGameView(BaseView):
                 box_size - 2,
                 box_size - 2,
                 fill=color,
-                outline="#27ae60" if is_correct else "#c0392b",
+                outline=color,
                 tags="box",
             )
 
@@ -1493,6 +1601,9 @@ class AdditionGameView(BaseView):
         try:
             total_count = self.num1 + self.num2
             img_size = self._calculate_image_size(total_count)
+            color1 = self.config.game_color1
+            color2 = self.config.game_color2
+            color3 = self.config.game_color3
 
             # Load image and resize preserving aspect ratio
             img = Image.open(image_path)
@@ -1521,7 +1632,7 @@ class AdditionGameView(BaseView):
                 text=str(self.num1),
                 font=number_font,
                 bg="#ecf0f1",
-                fg="#3498db",
+                fg=color1,
             )
             num1_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1554,7 +1665,7 @@ class AdditionGameView(BaseView):
                 text=str(self.num2),
                 font=number_font,
                 bg="#ecf0f1",
-                fg="#3498db",
+                fg=color2,
             )
             num2_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1581,9 +1692,9 @@ class AdditionGameView(BaseView):
 
             col += 1
 
-            # Question mark (will be replaced by answer buttons)
+            # Result placeholder (will be replaced by answer buttons)
             self.question_label = tk.Label(
-                inner_frame, text="❓", font=number_font, bg="#ecf0f1", fg="#e74c3c"
+                inner_frame, text="x", font=number_font, bg="#ecf0f1", fg=color3
             )
             self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -1595,6 +1706,9 @@ class AdditionGameView(BaseView):
         """Display addition with colored circles as fallback."""
         total_count = self.num1 + self.num2
         img_size = self._calculate_image_size(total_count)
+        color1 = self.config.game_color1
+        color2 = self.config.game_color2
+        color3 = self.config.game_color3
 
         inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
         inner_frame.grid(row=0, column=0)  # Centered via grid config
@@ -1602,7 +1716,13 @@ class AdditionGameView(BaseView):
         number_font = tkfont.Font(family="Arial", size=36, weight="bold")
         plus_font = tkfont.Font(family="Arial", size=28, weight="bold")
 
-        colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
+        colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
 
         col = 0
 
@@ -1612,7 +1732,7 @@ class AdditionGameView(BaseView):
             text=str(self.num1),
             font=number_font,
             bg="#ecf0f1",
-            fg="#3498db",
+            fg=color1,
         )
         num1_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1651,7 +1771,7 @@ class AdditionGameView(BaseView):
             text=str(self.num2),
             font=number_font,
             bg="#ecf0f1",
-            fg="#3498db",
+            fg=color2,
         )
         num2_label.grid(row=0, column=col, padx=20, pady=10)
 
@@ -1684,9 +1804,9 @@ class AdditionGameView(BaseView):
 
         col += 1
 
-        # Question mark
+        # Result placeholder
         self.question_label = tk.Label(
-            inner_frame, text="❓", font=number_font, bg="#ecf0f1", fg="#e74c3c"
+            inner_frame, text="x", font=number_font, bg="#ecf0f1", fg=color3
         )
         self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -1709,7 +1829,7 @@ class AdditionGameView(BaseView):
 
         # Create buttons
         button_font = tkfont.Font(family="Arial", size=36, weight="bold")
-        button_color = self.config.game_button_color
+        button_color = self.config.game_color3
 
         for answer in answers:
             btn = tk.Button(
@@ -1756,9 +1876,9 @@ class AdditionGameView(BaseView):
         for btn in self.answer_buttons:
             btn_answer = int(btn.cget("text"))
             if btn_answer == self.correct_answer:
-                btn.config(bg="#2ecc71")  # Green for correct
+                btn.config(bg=self.config.game_correct_color)
             elif btn_answer == answer and not is_correct:
-                btn.config(bg="#e74c3c")  # Red for wrong selection
+                btn.config(bg=self.config.game_incorrect_color)
 
         # Play sound only for correct answers (positive reinforcement)
         if is_correct:
@@ -1921,7 +2041,7 @@ class AdditionResultsView(BaseView):
             text=score_text,
             font=score_font,
             bg="#f0f0f0",
-            fg="#2ecc71",
+            fg=self.config.game_correct_color,
         )
         score_label.pack(pady=(0, 30))
 
@@ -1932,7 +2052,11 @@ class AdditionResultsView(BaseView):
         result_font = tkfont.Font(family="Arial", size=20, weight="bold")
 
         for idx, entry in enumerate(self.history):
-            color = "#2ecc71" if entry["is_correct"] else "#e74c3c"
+            color = (
+                self.config.game_correct_color
+                if entry["is_correct"]
+                else self.config.game_incorrect_color
+            )
 
             frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
             row = idx // 5
@@ -1971,6 +2095,1165 @@ class AdditionResultsView(BaseView):
 
         # Start playback after a short delay to ensure frame is ready
         self.after(100, lambda: self.video_player.play(video_path))
+
+
+class SubtractionGameView(BaseView):
+    """Subtraction game view where children learn to subtract numbers.
+
+    Shows all images for the larger number, then visually marks the ones
+    being subtracted with a red X overlay so children can see what's
+    being taken away and count what remains.
+    """
+
+    def __init__(self, parent: tk.Widget, controller: "GameController"):
+        super().__init__(parent, controller)
+        self.current_round = 0
+        self.minuend = 0  # larger number
+        self.subtrahend = 0  # smaller number to subtract
+        self.correct_answer = 0
+        self.history: list[dict] = []
+        self.images: list[ImageTk.PhotoImage] = []
+        self.answer_buttons: list[tk.Button] = []
+        self.available_images: list[Path] = []
+        self._hint_timer_id: str | None = None
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Set up the subtraction game UI."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Header
+        self.grid_rowconfigure(1, weight=3)  # Image area
+        self.grid_rowconfigure(2, weight=0)  # Answer area
+
+        # Header with back button and round info
+        header = tk.Frame(self, bg="#f0f0f0")
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
+        header.grid_columnconfigure(1, weight=1)
+
+        back_font = tkfont.Font(family="Arial", size=14)
+        self.back_btn = tk.Button(
+            header,
+            text="⬅️",
+            font=back_font,
+            bg="#95a5a6",
+            fg="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self.controller.show_view("main_menu"),
+        )
+        self.back_btn.grid(row=0, column=0, sticky="w")
+
+        # Progress boxes frame
+        self.progress_frame = tk.Frame(header, bg="#f0f0f0")
+        self.progress_frame.grid(row=0, column=1)
+        self.progress_boxes: list[tk.Canvas] = []
+
+        # Image display area
+        self.image_frame = tk.Frame(self, bg="#ecf0f1")
+        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.image_frame.grid_rowconfigure(0, weight=1)
+        self.image_frame.grid_columnconfigure(0, weight=1)
+
+        # Answer buttons area (centered)
+        self.answer_frame = tk.Frame(self, bg="#f0f0f0")
+        self.answer_frame.grid(row=2, column=0, pady=(10, 30))
+
+    def _load_available_images(self) -> None:
+        """Load list of available images from the images folder."""
+        images_folder = self.config.images_folder
+        self.available_images = []
+
+        if images_folder.exists():
+            for ext in ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp"]:
+                self.available_images.extend(images_folder.glob(ext))
+
+    def show(self) -> None:
+        """Start a new subtraction game."""
+        self._load_available_images()
+        self.current_round = 0
+        self.history = []
+        self._init_progress_boxes()
+        self._next_round()
+
+    def _init_progress_boxes(self) -> None:
+        """Initialize the progress boxes."""
+        for box in self.progress_boxes:
+            box.destroy()
+        self.progress_boxes.clear()
+
+        total_rounds = self.config.game_rounds
+        box_size = 20
+        for i in range(total_rounds):
+            box = tk.Canvas(
+                self.progress_frame,
+                width=box_size,
+                height=box_size,
+                bg="#f0f0f0",
+                highlightthickness=0,
+            )
+            box.create_rectangle(
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
+                fill="#bdc3c7",
+                outline="#95a5a6",
+                tags="box",
+            )
+            box.grid(row=0, column=i, padx=2)
+            self.progress_boxes.append(box)
+
+    def _update_progress_box(self, round_num: int, is_correct: bool) -> None:
+        """Update a progress box color based on answer correctness."""
+        if 0 < round_num <= len(self.progress_boxes):
+            box = self.progress_boxes[round_num - 1]
+            color = (
+                self.config.game_correct_color
+                if is_correct
+                else self.config.game_incorrect_color
+            )
+            box.delete("box")
+            box_size = 20
+            box.create_rectangle(
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
+                fill=color,
+                outline=color,
+                tags="box",
+            )
+
+    def _next_round(self) -> None:
+        """Set up the next round."""
+        # Cancel any pending hint timer from the previous round
+        if self._hint_timer_id is not None:
+            self.after_cancel(self._hint_timer_id)
+            self._hint_timer_id = None
+
+        self.current_round += 1
+        total_rounds = self.config.game_rounds
+
+        if self.current_round > total_rounds:
+            self._show_results()
+            return
+
+        # Clear previous content
+        for widget in self.image_frame.winfo_children():
+            widget.destroy()
+        self.images.clear()
+
+        for widget in self.answer_frame.winfo_children():
+            widget.destroy()
+        self.answer_buttons.clear()
+
+        # Generate numbers: minuend - subtrahend, both positive, result >= 1
+        max_num = self.config.game_max_number
+        self.minuend = random.randint(2, max_num)
+        self.subtrahend = random.randint(1, self.minuend - 1)
+        self.correct_answer = self.minuend - self.subtrahend
+
+        # Store image path for delayed display
+        if self.available_images:
+            self._current_image_path = random.choice(self.available_images)
+        else:
+            self._current_image_path = None
+
+        # Show images after delay, then answers after another delay
+        delay = self.config.game_delay
+        self.after(delay, self._show_subtraction_images)
+
+    def _show_subtraction_images(self) -> None:
+        """Display subtraction images after initial delay."""
+        if self._current_image_path:
+            self._display_subtraction(self._current_image_path)
+        else:
+            self._display_subtraction_fallback()
+
+        # Show answer buttons after normal delay, then hints after hint_delay
+        delay = self.config.game_delay
+        self.after(delay, self._show_answers_then_hints)
+
+    def _calculate_image_size(self, total_count: int) -> int:
+        """Calculate appropriate image size based on count and available space."""
+        base_size = self.config.game_image_size
+
+        self.image_frame.update_idletasks()
+        frame_height = self.image_frame.winfo_height()
+        frame_width = self.image_frame.winfo_width()
+
+        if frame_height < 50:
+            frame_height = 400
+        if frame_width < 50:
+            frame_width = 800
+
+        # Layout like addition: two image groups side by side
+        available_height = frame_height - 100
+        max_rows = max(1, (max(self.minuend, self.subtrahend) + 4) // 5)
+        max_height_per_image = available_height // max(max_rows, 1)
+
+        available_width = frame_width - 250
+        max_width_per_image = available_width // 10
+
+        calculated_size = min(max_height_per_image, max_width_per_image, base_size)
+        return max(30, int(calculated_size * 0.85))
+
+    def _display_subtraction(self, image_path: Path) -> None:
+        """Display subtraction with two groups of images like addition layout.
+
+        All images start without borders. After hint_delay the red borders
+        are revealed on the subtrahend images in both groups.
+        """
+        try:
+            total_count = self.minuend + self.subtrahend
+            img_size = self._calculate_image_size(total_count)
+            color1 = self.config.game_color1
+            color2 = self.config.game_color2
+            color3 = self.config.game_color3
+
+            img = Image.open(image_path)
+            width, height = img.size
+            if width > height:
+                new_width = img_size
+                new_height = int(height * img_size / width)
+            else:
+                new_height = img_size
+                new_width = int(width * img_size / height)
+            img_normal = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # Pre-build the red-bordered variant for later swap
+            border = max(3, img_size // 20)
+            bordered_w = new_width + 2 * border
+            bordered_h = new_height + 2 * border
+            bordered_pil = Image.new("RGBA", (bordered_w, bordered_h), color2)
+            bordered_pil.paste(img_normal, (border, border))
+            self._bordered_photo = ImageTk.PhotoImage(bordered_pil)
+
+            inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+            inner_frame.grid(row=0, column=0)
+
+            number_font = tkfont.Font(family="Arial", size=36, weight="bold")
+            minus_font = tkfont.Font(family="Arial", size=28, weight="bold")
+
+            col = 0
+
+            # --- Minuend number ---
+            minuend_label = tk.Label(
+                inner_frame,
+                text=str(self.minuend),
+                font=number_font,
+                bg="#ecf0f1",
+                fg=color1,
+            )
+            minuend_label.grid(row=0, column=col, padx=20, pady=10)
+
+            # --- Minuend images (all normal initially) ---
+            img1_frame = tk.Frame(inner_frame, bg="#ecf0f1")
+            img1_frame.grid(row=1, column=col, padx=20, pady=10)
+
+            self._hint_labels: list[tk.Label] = []  # labels to swap later
+
+            cols1 = min(self.minuend, 5)
+            for i in range(self.minuend):
+                photo = ImageTk.PhotoImage(img_normal)
+                self.images.append(photo)
+                label = tk.Label(img1_frame, image=photo, bg="#ecf0f1")
+                r = i // cols1
+                c = i % cols1
+                label.grid(row=r, column=c, padx=3, pady=3)
+                # Track the last 'subtrahend' labels for hint reveal
+                if i >= (self.minuend - self.subtrahend):
+                    self._hint_labels.append(label)
+
+            col += 1
+
+            # --- Minus sign ---
+            minus_label = tk.Label(
+                inner_frame,
+                text="➖",
+                font=minus_font,
+                bg="#ecf0f1",
+                fg="#2c3e50",
+            )
+            minus_label.grid(row=0, column=col, rowspan=2, padx=30, pady=10)
+
+            col += 1
+
+            # --- Subtrahend number ---
+            sub_label = tk.Label(
+                inner_frame,
+                text=str(self.subtrahend),
+                font=number_font,
+                bg="#ecf0f1",
+                fg=color2,
+            )
+            sub_label.grid(row=0, column=col, padx=20, pady=10)
+
+            # --- Subtrahend images (all normal initially) ---
+            img2_frame = tk.Frame(inner_frame, bg="#ecf0f1")
+            img2_frame.grid(row=1, column=col, padx=20, pady=10)
+
+            cols2 = min(self.subtrahend, 5)
+            for i in range(self.subtrahend):
+                photo = ImageTk.PhotoImage(img_normal)
+                self.images.append(photo)
+                label = tk.Label(img2_frame, image=photo, bg="#ecf0f1")
+                r = i // cols2
+                c = i % cols2
+                label.grid(row=r, column=c, padx=3, pady=3)
+                self._hint_labels.append(label)
+
+            col += 1
+
+            # --- Equals sign ---
+            equals_label = tk.Label(
+                inner_frame,
+                text="=",
+                font=number_font,
+                bg="#ecf0f1",
+                fg="#2c3e50",
+            )
+            equals_label.grid(row=0, column=col, rowspan=2, padx=30, pady=10)
+
+            col += 1
+
+            # --- Result placeholder ---
+            self.question_label = tk.Label(
+                inner_frame,
+                text="x",
+                font=number_font,
+                bg="#ecf0f1",
+                fg=color3,
+            )
+            self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
+
+        except Exception as e:
+            print(f"Error loading image: {e}")
+            self._display_subtraction_fallback()
+
+    def _display_subtraction_fallback(self) -> None:
+        """Display subtraction with colored circles as fallback."""
+        total_count = self.minuend + self.subtrahend
+        img_size = self._calculate_image_size(total_count)
+        color1 = self.config.game_color1
+        color2 = self.config.game_color2
+        color3 = self.config.game_color3
+
+        inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+        inner_frame.grid(row=0, column=0)
+
+        number_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        minus_font = tkfont.Font(family="Arial", size=28, weight="bold")
+
+        colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
+        self._fallback_border_color = color2
+        self._fallback_border_width = max(3, img_size // 20)
+        self._fallback_img_size = img_size
+
+        col = 0
+
+        # --- Minuend number ---
+        minuend_label = tk.Label(
+            inner_frame,
+            text=str(self.minuend),
+            font=number_font,
+            bg="#ecf0f1",
+            fg=color1,
+        )
+        minuend_label.grid(row=0, column=col, padx=20, pady=10)
+
+        # --- Minuend circles (all without borders initially) ---
+        img1_frame = tk.Frame(inner_frame, bg="#ecf0f1")
+        img1_frame.grid(row=1, column=col, padx=20, pady=10)
+
+        self._hint_canvases: list[tk.Canvas] = []  # canvases to add borders to later
+
+        cols1 = min(self.minuend, 5)
+        for i in range(self.minuend):
+            canvas = tk.Canvas(
+                img1_frame,
+                width=img_size,
+                height=img_size,
+                bg="#ecf0f1",
+                highlightthickness=0,
+            )
+            fill_color = colors[i % len(colors)]
+            canvas.create_oval(
+                5,
+                5,
+                img_size - 5,
+                img_size - 5,
+                fill=fill_color,
+                outline="",
+                tags="circle",
+            )
+            r = i // cols1
+            c = i % cols1
+            canvas.grid(row=r, column=c, padx=3, pady=3)
+            if i >= (self.minuend - self.subtrahend):
+                self._hint_canvases.append((canvas, fill_color))
+
+        col += 1
+
+        # --- Minus sign ---
+        minus_label = tk.Label(
+            inner_frame,
+            text="➖",
+            font=minus_font,
+            bg="#ecf0f1",
+            fg="#2c3e50",
+        )
+        minus_label.grid(row=0, column=col, rowspan=2, padx=30, pady=10)
+
+        col += 1
+
+        # --- Subtrahend number ---
+        sub_label = tk.Label(
+            inner_frame,
+            text=str(self.subtrahend),
+            font=number_font,
+            bg="#ecf0f1",
+            fg=color2,
+        )
+        sub_label.grid(row=0, column=col, padx=20, pady=10)
+
+        # --- Subtrahend circles (all without borders initially) ---
+        img2_frame = tk.Frame(inner_frame, bg="#ecf0f1")
+        img2_frame.grid(row=1, column=col, padx=20, pady=10)
+
+        cols2 = min(self.subtrahend, 5)
+        for i in range(self.subtrahend):
+            canvas = tk.Canvas(
+                img2_frame,
+                width=img_size,
+                height=img_size,
+                bg="#ecf0f1",
+                highlightthickness=0,
+            )
+            fill_color = colors[(i + self.minuend) % len(colors)]
+            canvas.create_oval(
+                5,
+                5,
+                img_size - 5,
+                img_size - 5,
+                fill=fill_color,
+                outline="",
+                tags="circle",
+            )
+            r = i // cols2
+            c = i % cols2
+            canvas.grid(row=r, column=c, padx=3, pady=3)
+            self._hint_canvases.append((canvas, fill_color))
+
+        col += 1
+
+        # --- Equals sign ---
+        equals_label = tk.Label(
+            inner_frame,
+            text="=",
+            font=number_font,
+            bg="#ecf0f1",
+            fg="#2c3e50",
+        )
+        equals_label.grid(row=0, column=col, rowspan=2, padx=30, pady=10)
+
+        col += 1
+
+        # --- Result placeholder ---
+        self.question_label = tk.Label(
+            inner_frame,
+            text="x",
+            font=number_font,
+            bg="#ecf0f1",
+            fg=color3,
+        )
+        self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
+
+    def _show_answers_then_hints(self) -> None:
+        """Show answer buttons first, then schedule hint reveal."""
+        self._create_answer_buttons()
+        hint_delay = self.config.game_hint_delay
+        self._hint_timer_id = self.after(hint_delay, self._reveal_hints)
+
+    def _reveal_hints(self) -> None:
+        """Reveal red borders on the subtrahend images after hint delay."""
+        # Image-based path: swap label images to bordered variant
+        if hasattr(self, "_hint_labels") and self._hint_labels:
+            for label in self._hint_labels:
+                label.config(image=self._bordered_photo)
+
+        # Fallback path: redraw circles with red outlines
+        if hasattr(self, "_hint_canvases") and self._hint_canvases:
+            sz = self._fallback_img_size
+            bw = self._fallback_border_width
+            bc = self._fallback_border_color
+            for canvas, fill_color in self._hint_canvases:
+                canvas.delete("circle")
+                canvas.create_oval(
+                    2,
+                    2,
+                    sz - 2,
+                    sz - 2,
+                    fill=fill_color,
+                    outline=bc,
+                    width=bw,
+                    tags="circle",
+                )
+
+    def _create_answer_buttons(self) -> None:
+        """Create three answer buttons with one correct answer."""
+        max_num = self.config.game_max_number
+        min_val = max(0, self.correct_answer - 3)
+        max_val = min(max_num, self.correct_answer + 3)
+
+        wrong_answers = []
+        while len(wrong_answers) < 2:
+            num = random.randint(min_val, max_val)
+            if num != self.correct_answer and num not in wrong_answers and num >= 0:
+                wrong_answers.append(num)
+
+        answers = [self.correct_answer] + wrong_answers
+        random.shuffle(answers)
+
+        button_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        button_color = self.config.game_color3
+
+        for answer in answers:
+            btn = tk.Button(
+                self.answer_frame,
+                text=str(answer),
+                font=button_font,
+                width=4,
+                height=1,
+                bg=button_color,
+                fg="white",
+                activebackground=button_color,
+                activeforeground="white",
+                relief="flat",
+                cursor="hand2",
+                command=lambda a=answer: self._check_answer(a),
+            )
+            btn.pack(side="left", padx=20)
+            self.answer_buttons.append(btn)
+
+    def _check_answer(self, answer: int) -> None:
+        """Check if the selected answer is correct."""
+        is_correct = answer == self.correct_answer
+
+        self.history.append(
+            {
+                "round": self.current_round,
+                "minuend": self.minuend,
+                "subtrahend": self.subtrahend,
+                "correct_answer": self.correct_answer,
+                "player_answer": answer,
+                "is_correct": is_correct,
+            }
+        )
+
+        self._update_progress_box(self.current_round, is_correct)
+
+        for btn in self.answer_buttons:
+            btn.config(state="disabled", cursor="")
+
+        for btn in self.answer_buttons:
+            btn_answer = int(btn.cget("text"))
+            if btn_answer == self.correct_answer:
+                btn.config(bg=self.config.game_correct_color)
+            elif btn_answer == answer and not is_correct:
+                btn.config(bg=self.config.game_incorrect_color)
+
+        if is_correct:
+            self.controller.sound_player.play_random_from_folder(
+                self.config.correct_sound_folder
+            )
+
+        delay = self.config.game_delay
+        self.after(delay, self._next_round)
+
+    def _show_results(self) -> None:
+        """Show the results screen."""
+        self.controller.show_view("subtraction_results", history=self.history)
+
+
+class SubtractionResultsView(BaseView):
+    """Results view for the subtraction game."""
+
+    def __init__(self, parent: tk.Widget, controller: "GameController"):
+        super().__init__(parent, controller)
+        self.history: list[dict] = []
+        self.video_player: VideoPlayer | None = None
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Set up the results UI."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=0)
+
+        # Title
+        title_font = tkfont.Font(family="Arial", size=48, weight="bold")
+        self.title_label = tk.Label(
+            self, text="🏆", font=title_font, bg="#f0f0f0", fg="#2c3e50"
+        )
+        self.title_label.grid(row=0, column=0, columnspan=2, pady=(30, 20))
+
+        # Main content area
+        self.content_frame = tk.Frame(self, bg="#f0f0f0")
+        self.content_frame.grid(row=1, column=0, sticky="nsew", padx=20)
+        self.content_frame.grid_columnconfigure(0, weight=1)
+        self.content_frame.grid_columnconfigure(1, weight=1)
+        self.content_frame.grid_rowconfigure(0, weight=1)
+
+        # Results area (left side)
+        self.results_frame = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.results_frame.grid(row=0, column=0, sticky="nsew", padx=10)
+
+        # Video area (right side)
+        self.video_container = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.video_container.grid(row=0, column=1, sticky="nsew", padx=10)
+
+        # Button area
+        self.button_frame = tk.Frame(self, bg="#f0f0f0")
+        self.button_frame.grid(row=2, column=0, pady=30)
+
+        button_font = tkfont.Font(family="Arial", size=20, weight="bold")
+        button_config = {
+            "font": button_font,
+            "width": 15,
+            "height": 2,
+            "relief": "flat",
+            "cursor": "hand2",
+        }
+
+        self.play_again_btn = tk.Button(
+            self.button_frame,
+            text="🔄",
+            bg="#2ecc71",
+            fg="white",
+            activebackground="#27ae60",
+            activeforeground="white",
+            command=self._on_play_again,
+            **button_config,
+        )
+        self.play_again_btn.pack(side="left", padx=20)
+
+        self.menu_btn = tk.Button(
+            self.button_frame,
+            text="🏠",
+            bg="#3498db",
+            fg="white",
+            activebackground="#2980b9",
+            activeforeground="white",
+            command=self._on_main_menu,
+            **button_config,
+        )
+        self.menu_btn.pack(side="left", padx=20)
+
+        self.exit_btn = tk.Button(
+            self.button_frame,
+            text="🚪",
+            bg="#e67e22",
+            fg="white",
+            activebackground="#d35400",
+            activeforeground="white",
+            command=self._on_exit,
+            **button_config,
+        )
+        self.exit_btn.pack(side="left", padx=20)
+
+    def _on_play_again(self) -> None:
+        self._stop_video()
+        self.controller.show_view("subtraction")
+
+    def _on_main_menu(self) -> None:
+        self._stop_video()
+        self.controller.show_view("main_menu")
+
+    def _on_exit(self) -> None:
+        self._stop_video()
+        self.controller.quit_game()
+
+    def _stop_video(self) -> None:
+        if self.video_player is not None:
+            self.video_player.stop()
+
+    def _check_video_reward(self) -> bool:
+        total = len(self.history)
+        wrong_count = sum(1 for h in self.history if not h["is_correct"])
+        min_rounds = self.config.video_min_rounds
+        max_wrong = self.config.video_max_wrong
+        return total >= min_rounds and wrong_count <= max_wrong
+
+    def show(self, history: list[dict] | None = None) -> None:
+        """Display the results."""
+        if history is not None:
+            self.history = history
+
+        self._stop_video()
+
+        for widget in self.results_frame.winfo_children():
+            widget.destroy()
+        for widget in self.video_container.winfo_children():
+            widget.destroy()
+
+        correct_count = sum(1 for h in self.history if h["is_correct"])
+        total = len(self.history)
+
+        score_font = tkfont.Font(family="Arial", size=32, weight="bold")
+        score_text = f"✅ {correct_count} / {total}"
+        score_label = tk.Label(
+            self.results_frame,
+            text=score_text,
+            font=score_font,
+            bg="#f0f0f0",
+            fg=self.config.game_correct_color,
+        )
+        score_label.pack(pady=(0, 30))
+
+        history_frame = tk.Frame(self.results_frame, bg="#f0f0f0")
+        history_frame.pack()
+
+        result_font = tkfont.Font(family="Arial", size=20, weight="bold")
+
+        for idx, entry in enumerate(self.history):
+            color = (
+                self.config.game_correct_color
+                if entry["is_correct"]
+                else self.config.game_incorrect_color
+            )
+
+            frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
+            row = idx // 5
+            col = idx % 5
+            frame.grid(row=row, column=col, padx=5, pady=10)
+
+            equation = (
+                f"{entry['minuend']}-{entry['subtrahend']}={entry['correct_answer']}"
+            )
+            label = tk.Label(
+                frame,
+                text=equation,
+                font=result_font,
+                bg=color,
+                fg="white",
+            )
+            label.pack()
+
+        if self._check_video_reward():
+            self._play_video_reward()
+
+    def _play_video_reward(self) -> None:
+        self.video_player = VideoPlayer(self.video_container, self.config)
+
+        if not self.video_player.is_available():
+            return
+
+        video_path = self.video_player.get_random_video()
+        if video_path is None:
+            return
+
+        video_frame = self.video_player.create_frame(self.video_container)
+        video_frame.pack(fill="both", expand=True, pady=20)
+
+        self.after(100, lambda: self.video_player.play(video_path))
+
+
+class MultiplicationExploreView(BaseView):
+    """Exploration view for visualizing multiplication as repeated groups."""
+
+    def __init__(self, parent: tk.Widget, controller: "GameController"):
+        super().__init__(parent, controller)
+        self.available_images: list[Path] = []
+        self.images: list[ImageTk.PhotoImage] = []
+        self.current_image_path: Path | None = None
+        self.factor1_var = tk.StringVar(value="3")
+        self.factor2_var = tk.StringVar(value="1")
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Set up the multiplication exploration UI."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=1)
+
+        header = tk.Frame(self, bg="#f0f0f0")
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
+        header.grid_columnconfigure(1, weight=1)
+
+        back_font = tkfont.Font(family="Arial", size=14)
+        self.back_btn = tk.Button(
+            header,
+            text="⬅️",
+            font=back_font,
+            bg="#95a5a6",
+            fg="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self.controller.show_view("main_menu"),
+        )
+        self.back_btn.grid(row=0, column=0, sticky="w")
+
+        title_font = tkfont.Font(family="Arial", size=24, weight="bold")
+        title_label = tk.Label(
+            header,
+            text="✖️ Explore",
+            font=title_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
+        )
+        title_label.grid(row=0, column=1)
+
+        self.image_frame = tk.Frame(self, bg="#ecf0f1")
+        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.image_frame.grid_rowconfigure(0, weight=1)
+        self.image_frame.grid_columnconfigure(0, weight=1)
+
+        controls = tk.Frame(self, bg="#f0f0f0")
+        controls.grid(row=2, column=0, sticky="ew", padx=20, pady=(0, 16))
+        controls.grid_columnconfigure(0, weight=1)
+        controls.grid_columnconfigure(1, weight=0)
+        controls.grid_columnconfigure(2, weight=0)
+        controls.grid_columnconfigure(3, weight=0)
+        controls.grid_columnconfigure(4, weight=0)
+        controls.grid_columnconfigure(5, weight=0)
+        controls.grid_columnconfigure(6, weight=1)
+
+        result_font = tkfont.Font(family="Arial", size=28, weight="bold")
+        adjust_font = tkfont.Font(family="Arial", size=18, weight="bold")
+
+        self.factor1_label = tk.Label(
+            controls,
+            text="3",
+            font=result_font,
+            bg="#f0f0f0",
+            fg=self.config.game_color1,
+            width=2,
+        )
+        self.factor1_label.grid(row=0, column=1, padx=8)
+
+        tk.Label(
+            controls,
+            text="×",
+            font=result_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
+        ).grid(row=0, column=2, padx=4)
+
+        self.factor2_label = tk.Label(
+            controls,
+            text="1",
+            font=result_font,
+            bg="#f0f0f0",
+            fg=self.config.game_color2,
+            width=2,
+        )
+        self.factor2_label.grid(row=0, column=3, padx=8)
+
+        tk.Label(
+            controls,
+            text="=",
+            font=result_font,
+            bg="#f0f0f0",
+            fg="#2c3e50",
+        ).grid(row=0, column=4, padx=4)
+
+        self.result_label = tk.Label(
+            controls,
+            text="3",
+            font=result_font,
+            bg="#f0f0f0",
+            fg=self.config.game_color3,
+            width=3,
+        )
+        self.result_label.grid(row=0, column=5, padx=8)
+
+        factor1_buttons = tk.Frame(controls, bg="#f0f0f0")
+        factor1_buttons.grid(row=1, column=1, pady=(8, 0))
+        tk.Button(
+            factor1_buttons,
+            text="−",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color1,
+            fg="white",
+            activebackground=self.config.game_color1,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(1, -1),
+        ).pack(side="left", padx=(0, 6))
+        tk.Button(
+            factor1_buttons,
+            text="+",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color1,
+            fg="white",
+            activebackground=self.config.game_color1,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(1, 1),
+        ).pack(side="left")
+
+        factor2_buttons = tk.Frame(controls, bg="#f0f0f0")
+        factor2_buttons.grid(row=1, column=3, pady=(8, 0))
+        tk.Button(
+            factor2_buttons,
+            text="−",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color2,
+            fg="white",
+            activebackground=self.config.game_color2,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(2, -1),
+        ).pack(side="left", padx=(0, 6))
+        tk.Button(
+            factor2_buttons,
+            text="+",
+            font=adjust_font,
+            width=3,
+            bg=self.config.game_color2,
+            fg="white",
+            activebackground=self.config.game_color2,
+            activeforeground="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self._adjust_factor(2, 1),
+        ).pack(side="left")
+
+    def _load_available_images(self) -> None:
+        """Load list of available images from the images folder."""
+        images_folder = self.config.images_folder
+        self.available_images = []
+
+        if images_folder.exists():
+            for ext in ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp"]:
+                self.available_images.extend(images_folder.glob(ext))
+
+    def _parse_factor(self, raw_value: str, minimum: int, maximum: int) -> int:
+        """Parse and clamp a spinbox value."""
+        try:
+            value = int(raw_value)
+        except ValueError:
+            value = minimum
+        return max(minimum, min(maximum, value))
+
+    def _get_factors(self) -> tuple[int, int]:
+        """Return the two clamped multiplication factors."""
+        factor1 = self._parse_factor(self.factor1_var.get(), 1, 10)
+        factor2 = self._parse_factor(self.factor2_var.get(), 1, 5)
+
+        if self.factor1_var.get() != str(factor1):
+            self.factor1_var.set(str(factor1))
+        if self.factor2_var.get() != str(factor2):
+            self.factor2_var.set(str(factor2))
+
+        return factor1, factor2
+
+    def _adjust_factor(self, factor_index: int, delta: int) -> None:
+        """Increase or decrease one factor and redraw the visualization."""
+        if factor_index == 1:
+            current = self._parse_factor(self.factor1_var.get(), 1, 10)
+            self.factor1_var.set(str(max(1, min(10, current + delta))))
+        else:
+            current = self._parse_factor(self.factor2_var.get(), 1, 5)
+            self.factor2_var.set(str(max(1, min(5, current + delta))))
+        self._update_visualization()
+
+    def _calculate_image_size(self, factor2: int) -> int:
+        """Calculate image size for a fixed 10-column multiplication grid."""
+        base_size = self.config.game_image_size
+
+        self.image_frame.update_idletasks()
+        frame_height = self.image_frame.winfo_height()
+        frame_width = self.image_frame.winfo_width()
+
+        if frame_height < 50:
+            frame_height = 500
+        if frame_width < 50:
+            frame_width = 900
+
+        display_rows = max(3, factor2)
+        available_height = frame_height - 40
+        available_width = frame_width - 80
+
+        max_height_per_image = available_height // max(display_rows, 1)
+        max_width_per_image = available_width // 10
+        calculated_size = min(max_height_per_image, max_width_per_image, base_size)
+
+        return max(24, int(calculated_size * 0.85))
+
+    def _draw_multiplication(self, image_path: Path) -> None:
+        """Draw the multiplication grid using the selected image."""
+        factor1, factor2 = self._get_factors()
+        img_size = self._calculate_image_size(factor2)
+        display_rows = max(3, factor2)
+
+        img = Image.open(image_path)
+        width, height = img.size
+        if width > height:
+            new_width = img_size
+            new_height = int(height * img_size / width)
+        else:
+            new_height = img_size
+            new_width = int(width * img_size / height)
+        resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        border = max(3, img_size // 18)
+        bordered = Image.new(
+            "RGBA",
+            (new_width + 2 * border, new_height + 2 * border),
+            self.config.game_color1,
+        )
+        bordered.paste(resized, (border, border))
+
+        photo_normal = ImageTk.PhotoImage(resized)
+        photo_color1 = ImageTk.PhotoImage(bordered)
+        self.images.extend([photo_normal, photo_color1])
+
+        inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+        inner_frame.grid(row=0, column=0)
+
+        cell_width = new_width + 2 * border
+        cell_height = new_height + 2 * border
+
+        for row_idx in range(display_rows):
+            row_frame = tk.Frame(
+                inner_frame,
+                bg="#ecf0f1",
+                highlightbackground=(
+                    self.config.game_color2 if row_idx < factor2 else "#d6dbe0"
+                ),
+                highlightthickness=2 if row_idx < factor2 else 1,
+            )
+            row_frame.grid(row=row_idx, column=0, pady=6)
+
+            content_frame = tk.Frame(row_frame, bg="#ecf0f1")
+            content_frame.pack(padx=8, pady=8)
+
+            for col_idx in range(10):
+                cell_frame = tk.Frame(
+                    content_frame,
+                    width=cell_width,
+                    height=cell_height,
+                    bg="#ecf0f1",
+                    highlightbackground="#dfe6eb",
+                    highlightthickness=1,
+                )
+                cell_frame.grid(row=0, column=col_idx, padx=4, pady=4)
+                cell_frame.grid_propagate(False)
+
+                if row_idx < factor2 and col_idx < factor1:
+                    label = tk.Label(cell_frame, image=photo_color1, bg="#ecf0f1")
+                    label.place(relx=0.5, rely=0.5, anchor="center")
+
+    def _draw_multiplication_fallback(self) -> None:
+        """Draw the multiplication grid using colored circles as fallback."""
+        factor1, factor2 = self._get_factors()
+        img_size = self._calculate_image_size(factor2)
+        display_rows = max(3, factor2)
+        fill_colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
+
+        inner_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+        inner_frame.grid(row=0, column=0)
+
+        border_width = max(3, img_size // 18)
+
+        for row_idx in range(display_rows):
+            row_frame = tk.Frame(
+                inner_frame,
+                bg="#ecf0f1",
+                highlightbackground=(
+                    self.config.game_color2 if row_idx < factor2 else "#d6dbe0"
+                ),
+                highlightthickness=2 if row_idx < factor2 else 1,
+            )
+            row_frame.grid(row=row_idx, column=0, pady=6)
+
+            content_frame = tk.Frame(row_frame, bg="#ecf0f1")
+            content_frame.pack(padx=8, pady=8)
+
+            for col_idx in range(10):
+                cell_frame = tk.Frame(
+                    content_frame,
+                    width=img_size,
+                    height=img_size,
+                    bg="#ecf0f1",
+                    highlightbackground="#dfe6eb",
+                    highlightthickness=1,
+                )
+                cell_frame.grid(row=0, column=col_idx, padx=4, pady=4)
+                cell_frame.grid_propagate(False)
+
+                if row_idx < factor2 and col_idx < factor1:
+                    canvas = tk.Canvas(
+                        cell_frame,
+                        width=img_size,
+                        height=img_size,
+                        bg="#ecf0f1",
+                        highlightthickness=0,
+                    )
+                    fill_color = fill_colors[
+                        (row_idx * factor1 + col_idx) % len(fill_colors)
+                    ]
+                    canvas.create_oval(
+                        4,
+                        4,
+                        img_size - 4,
+                        img_size - 4,
+                        fill=fill_color,
+                        outline=self.config.game_color1,
+                        width=border_width,
+                    )
+                    canvas.place(relx=0.5, rely=0.5, anchor="center")
+
+    def _update_visualization(self) -> None:
+        """Update the multiplication equation and image grid."""
+        factor1, factor2 = self._get_factors()
+        result = factor1 * factor2
+
+        self.factor1_label.config(text=str(factor1), fg=self.config.game_color1)
+        self.factor2_label.config(text=str(factor2), fg=self.config.game_color2)
+        self.result_label.config(text=str(result), fg=self.config.game_color3)
+
+        for widget in self.image_frame.winfo_children():
+            widget.destroy()
+        self.images.clear()
+
+        if self.current_image_path is not None:
+            try:
+                self._draw_multiplication(self.current_image_path)
+                return
+            except Exception as error:
+                print(f"Error loading multiplication image: {error}")
+
+        self._draw_multiplication_fallback()
+
+    def show(self) -> None:
+        """Prepare the exploration mode when the view is shown."""
+        self._load_available_images()
+        if self.available_images:
+            self.current_image_path = random.choice(self.available_images)
+        else:
+            self.current_image_path = None
+        self._update_visualization()
 
 
 class GameController:
@@ -2034,8 +3317,11 @@ class GameController:
             "settings": SettingsView,
             "counting": CountingGameView,
             "counting_results": CountingResultsView,
+            "multiplication_explore": MultiplicationExploreView,
             "addition": AdditionGameView,
             "addition_results": AdditionResultsView,
+            "subtraction": SubtractionGameView,
+            "subtraction_results": SubtractionResultsView,
         }
 
         for name, view_class in view_classes.items():
