@@ -223,6 +223,8 @@ class MainMenuView(BaseView):
         # Button frame
         button_frame = tk.Frame(self, bg="#f0f0f0")
         button_frame.grid(row=1, column=0, pady=20)
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
 
         # Button style
         button_color = self.config.game_color3
@@ -230,7 +232,7 @@ class MainMenuView(BaseView):
         button_font = tkfont.Font(family="Arial", size=24, weight="bold")
         button_config = {
             "font": button_font,
-            "width": 15,
+            "width": 11,
             "height": 2,
             "relief": "flat",
             "cursor": "hand2",
@@ -247,7 +249,7 @@ class MainMenuView(BaseView):
             command=lambda: self.controller.show_view("counting"),
             **button_config,
         )
-        self.counting_btn.pack(pady=15)
+        self.counting_btn.grid(row=0, column=0, padx=12, pady=10)
 
         # Addition game button
         self.game2_btn = tk.Button(
@@ -256,7 +258,7 @@ class MainMenuView(BaseView):
             command=lambda: self.controller.show_view("addition"),
             **button_config,
         )
-        self.game2_btn.pack(pady=15)
+        self.game2_btn.grid(row=1, column=0, padx=12, pady=10)
 
         # Subtraction game button
         self.subtraction_btn = tk.Button(
@@ -265,7 +267,7 @@ class MainMenuView(BaseView):
             command=lambda: self.controller.show_view("subtraction"),
             **button_config,
         )
-        self.subtraction_btn.pack(pady=15)
+        self.subtraction_btn.grid(row=2, column=0, padx=12, pady=10)
 
         # Multiplication exploration button
         self.multiplication_btn = tk.Button(
@@ -274,14 +276,14 @@ class MainMenuView(BaseView):
             command=lambda: self.controller.show_view("multiplication_explore"),
             **button_config,
         )
-        self.multiplication_btn.pack(pady=15)
+        self.multiplication_btn.grid(row=3, column=0, padx=12, pady=10)
 
         # Settings button
         self.settings_btn = tk.Button(
             button_frame,
             text="⚙️ Settings",
             font=button_font,
-            width=15,
+            width=11,
             height=2,
             relief="flat",
             cursor="hand2",
@@ -291,14 +293,14 @@ class MainMenuView(BaseView):
             activeforeground="white",
             command=lambda: self.controller.show_view("settings"),
         )
-        self.settings_btn.pack(pady=15)
+        self.settings_btn.grid(row=0, column=1, padx=12, pady=10)
 
         # Exit button
         self.exit_btn = tk.Button(
             button_frame,
             text="🚪",
             font=button_font,
-            width=15,
+            width=11,
             height=2,
             relief="flat",
             cursor="hand2",
@@ -308,7 +310,7 @@ class MainMenuView(BaseView):
             activeforeground="white",
             command=self.controller.quit_game,
         )
-        self.exit_btn.pack(pady=15)
+        self.exit_btn.grid(row=1, column=1, padx=12, pady=10)
 
         # Version label at the bottom center
         try:
