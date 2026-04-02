@@ -155,6 +155,15 @@ class Config:
         return self.get("game.color3", "#2EC4B6")
 
     @property
+    def game_unknown_symbol(self) -> str:
+        """Get the placeholder symbol used for unknown arithmetic results."""
+        value = self.get("game.unknown_symbol", "x")
+        if value is None:
+            return "x"
+        value = str(value).strip()
+        return value or "x"
+
+    @property
     def game_correct_color(self) -> str:
         """Get the color used for correct answers and positive progress."""
         return self.get("game.correct_color", "#00FF00")

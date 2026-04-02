@@ -10,6 +10,9 @@ Mauricio Fernández
 
 - **🔢 Counting Mode**: Learn to count by identifying how many objects are displayed
 - **➕ Addition Mode**: Learn basic addition with visual representations
+- **➖ Subtraction Mode**: Learn subtraction with visual hints for removed items
+- **⬜⬜ Multiplication Exploration**: Explore multiplication as repeated visual groups
+- **✖️ Multiplication Mode**: Solve multiplication exercises with answer buttons
 - **🖼️ Visual Learning**: Uses images grouped in educational patterns (groups of 2, 3, 4, 5, 10)
 - **🔊 Positive Reinforcement**: Sound effects for correct answers only
 - **🌍 Language Independent**: Uses symbols instead of text for universal accessibility
@@ -62,6 +65,7 @@ game:
   color1: "#4C7CF0"   # First number color
   color2: "#F4A261"   # Second number and hint border color
   color3: "#2EC4B6"   # Result and answer button color
+  unknown_symbol: "x" # Placeholder for unknown results in arithmetic modes
   correct_color: "#00FF00"   # Correct answer feedback color
   incorrect_color: "#FDE68A" # Incorrect answer feedback color
 ```
@@ -95,6 +99,20 @@ MyMath/
 - Shows two groups of images with numbers
 - Displays: `num1 + num2 = ?`
 - Child selects the correct sum from 3 options
+
+### Subtraction Mode ➖
+- Shows the minuend and subtrahend visually
+- Reveals hint borders after a delay so the removed group is easy to see
+- Child selects the correct difference from 3 options
+
+### Multiplication Exploration ⬜⬜
+- Shows multiplication as repeated rows of the same image
+- Lets children adjust both factors and see the product update immediately
+
+### Multiplication Mode ✖️
+- Generates multiplication exercises using the configured maximum number for both factors
+- Shows the multiplication as repeated visual groups with smaller images so the full task stays on screen
+- Child selects the correct product from 3 options
 
 ## Progress Tracking
 

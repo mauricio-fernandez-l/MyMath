@@ -40,6 +40,8 @@ game:
   color2: "#F4A261"
   # Color of the result placeholder and answer buttons
   color3: "#2EC4B6"
+  # Placeholder symbol for unknown arithmetic results
+  unknown_symbol: "x"
   # Color used for correct answers and positive progress
   correct_color: "#00FF00"
   # Color used for incorrect answers and soft warning states

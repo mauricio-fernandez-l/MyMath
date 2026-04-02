@@ -272,11 +272,20 @@ class MainMenuView(BaseView):
         # Multiplication exploration button
         self.multiplication_btn = tk.Button(
             button_frame,
-            text="✖️",
+            text="⬜⬜",
             command=lambda: self.controller.show_view("multiplication_explore"),
             **button_config,
         )
         self.multiplication_btn.grid(row=3, column=0, padx=12, pady=10)
+
+        # Multiplication practice button
+        self.multiplication_game_btn = tk.Button(
+            button_frame,
+            text="✖️",
+            command=lambda: self.controller.show_view("multiplication"),
+            **button_config,
+        )
+        self.multiplication_game_btn.grid(row=2, column=1, padx=12, pady=10)
 
         # Settings button
         self.settings_btn = tk.Button(
@@ -477,7 +486,7 @@ class SettingsView(BaseView):
                 "game.max_number",
                 "int",
                 "Max Number",
-                "Maximum number for counting/addition games",
+                "Maximum number for counting and arithmetic factors",
             ),
             (
                 "game.rounds",
@@ -526,6 +535,12 @@ class SettingsView(BaseView):
                 "color",
                 "Color 3",
                 "Color for result placeholders and answer buttons (hex code)",
+            ),
+            (
+                "game.unknown_symbol",
+                "str",
+                "Unknown Symbol",
+                "Placeholder symbol for unknown arithmetic results",
             ),
             (
                 "game.correct_color",
@@ -1694,7 +1709,11 @@ class AdditionGameView(BaseView):
 
             # Result placeholder (will be replaced by answer buttons)
             self.question_label = tk.Label(
-                inner_frame, text="x", font=number_font, bg="#ecf0f1", fg=color3
+                inner_frame,
+                text=self.config.game_unknown_symbol,
+                font=number_font,
+                bg="#ecf0f1",
+                fg=color3,
             )
             self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -1806,7 +1825,11 @@ class AdditionGameView(BaseView):
 
         # Result placeholder
         self.question_label = tk.Label(
-            inner_frame, text="x", font=number_font, bg="#ecf0f1", fg=color3
+            inner_frame,
+            text=self.config.game_unknown_symbol,
+            font=number_font,
+            bg="#ecf0f1",
+            fg=color3,
         )
         self.question_label.grid(row=0, column=col, rowspan=2, padx=20, pady=10)
 
@@ -2420,7 +2443,7 @@ class SubtractionGameView(BaseView):
             # --- Result placeholder ---
             self.question_label = tk.Label(
                 inner_frame,
-                text="x",
+                text=self.config.game_unknown_symbol,
                 font=number_font,
                 bg="#ecf0f1",
                 fg=color3,
@@ -2568,7 +2591,7 @@ class SubtractionGameView(BaseView):
         # --- Result placeholder ---
         self.question_label = tk.Label(
             inner_frame,
-            text="x",
+            text=self.config.game_unknown_symbol,
             font=number_font,
             bg="#ecf0f1",
             fg=color3,
@@ -2903,7 +2926,7 @@ class MultiplicationExploreView(BaseView):
         title_font = tkfont.Font(family="Arial", size=24, weight="bold")
         title_label = tk.Label(
             header,
-            text="✖️ Explore",
+            text="⬜⬜ Explore",
             font=title_font,
             bg="#f0f0f0",
             fg="#2c3e50",
@@ -3256,6 +3279,596 @@ class MultiplicationExploreView(BaseView):
         self._update_visualization()
 
 
+class MultiplicationGameView(BaseView):
+    """Multiplication game view with answer buttons and visual row groups."""
+
+    def __init__(self, parent: tk.Widget, controller: "GameController"):
+        super().__init__(parent, controller)
+        self.current_round = 0
+        self.factor1 = 0
+        self.factor2 = 0
+        self.correct_answer = 0
+        self.history: list[dict] = []
+        self.images: list[ImageTk.PhotoImage] = []
+        self.answer_buttons: list[tk.Button] = []
+        self.available_images: list[Path] = []
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Set up the multiplication game UI."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=3)
+        self.grid_rowconfigure(2, weight=0)
+
+        header = tk.Frame(self, bg="#f0f0f0")
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=10)
+        header.grid_columnconfigure(1, weight=1)
+
+        back_font = tkfont.Font(family="Arial", size=14)
+        self.back_btn = tk.Button(
+            header,
+            text="⬅️",
+            font=back_font,
+            bg="#95a5a6",
+            fg="white",
+            relief="flat",
+            cursor="hand2",
+            command=lambda: self.controller.show_view("main_menu"),
+        )
+        self.back_btn.grid(row=0, column=0, sticky="w")
+
+        self.progress_frame = tk.Frame(header, bg="#f0f0f0")
+        self.progress_frame.grid(row=0, column=1)
+        self.progress_boxes: list[tk.Canvas] = []
+
+        self.image_frame = tk.Frame(self, bg="#ecf0f1")
+        self.image_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
+        self.image_frame.grid_rowconfigure(0, weight=1)
+        self.image_frame.grid_columnconfigure(0, weight=1)
+
+        self.answer_frame = tk.Frame(self, bg="#f0f0f0")
+        self.answer_frame.grid(row=2, column=0, pady=(10, 30))
+
+    def _load_available_images(self) -> None:
+        """Load list of available images from the images folder."""
+        images_folder = self.config.images_folder
+        self.available_images = []
+
+        if images_folder.exists():
+            for ext in ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp"]:
+                self.available_images.extend(images_folder.glob(ext))
+
+    def show(self) -> None:
+        """Start a new multiplication game."""
+        self._load_available_images()
+        self.current_round = 0
+        self.history = []
+        self._init_progress_boxes()
+        self._next_round()
+
+    def _init_progress_boxes(self) -> None:
+        """Initialize the progress boxes."""
+        for box in self.progress_boxes:
+            box.destroy()
+        self.progress_boxes.clear()
+
+        total_rounds = self.config.game_rounds
+        box_size = 20
+        for i in range(total_rounds):
+            box = tk.Canvas(
+                self.progress_frame,
+                width=box_size,
+                height=box_size,
+                bg="#f0f0f0",
+                highlightthickness=0,
+            )
+            box.create_rectangle(
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
+                fill="#bdc3c7",
+                outline="#95a5a6",
+                tags="box",
+            )
+            box.grid(row=0, column=i, padx=2)
+            self.progress_boxes.append(box)
+
+    def _update_progress_box(self, round_num: int, is_correct: bool) -> None:
+        """Update a progress box color based on answer correctness."""
+        if 0 < round_num <= len(self.progress_boxes):
+            box = self.progress_boxes[round_num - 1]
+            color = (
+                self.config.game_correct_color
+                if is_correct
+                else self.config.game_incorrect_color
+            )
+            box.delete("box")
+            box_size = 20
+            box.create_rectangle(
+                2,
+                2,
+                box_size - 2,
+                box_size - 2,
+                fill=color,
+                outline=color,
+                tags="box",
+            )
+
+    def _next_round(self) -> None:
+        """Set up the next multiplication round."""
+        self.current_round += 1
+        total_rounds = self.config.game_rounds
+
+        if self.current_round > total_rounds:
+            self._show_results()
+            return
+
+        for widget in self.image_frame.winfo_children():
+            widget.destroy()
+        self.images.clear()
+
+        for widget in self.answer_frame.winfo_children():
+            widget.destroy()
+        self.answer_buttons.clear()
+
+        max_factor = max(1, self.config.game_max_number)
+        self.factor1 = random.randint(1, max_factor)
+        self.factor2 = random.randint(1, max_factor)
+        self.correct_answer = self.factor1 * self.factor2
+
+        if self.available_images:
+            self._current_image_path = random.choice(self.available_images)
+        else:
+            self._current_image_path = None
+
+        self.after(self.config.game_delay, self._show_multiplication_images)
+
+    def _show_multiplication_images(self) -> None:
+        """Display multiplication visuals before showing answer buttons."""
+        if self._current_image_path:
+            self._display_multiplication(self._current_image_path)
+        else:
+            self._display_multiplication_fallback()
+
+        self.after(self.config.game_delay, self._create_answer_buttons)
+
+    def _calculate_image_size(self) -> int:
+        """Calculate a compact image size so larger products still fit."""
+        base_size = max(24, int(self.config.game_image_size * 0.55))
+
+        self.image_frame.update_idletasks()
+        frame_height = self.image_frame.winfo_height()
+        frame_width = self.image_frame.winfo_width()
+
+        if frame_height < 50:
+            frame_height = 500
+        if frame_width < 50:
+            frame_width = 900
+
+        available_height = frame_height - 140
+        available_width = frame_width - 80
+
+        max_height_per_image = available_height // max(self.factor2, 1)
+        max_width_per_image = available_width // max(self.factor1, 1)
+        calculated_size = min(max_height_per_image, max_width_per_image, base_size)
+
+        return max(18, int(calculated_size * 0.82))
+
+    def _create_equation_header(self, parent: tk.Widget) -> None:
+        """Create the multiplication equation above the visual rows."""
+        number_font = tkfont.Font(family="Arial", size=30, weight="bold")
+        symbol_font = tkfont.Font(family="Arial", size=24, weight="bold")
+        unknown_symbol = self.config.game_unknown_symbol
+
+        pieces = [
+            (str(self.factor1), self.config.game_color1, number_font),
+            ("×", "#2c3e50", symbol_font),
+            (str(self.factor2), self.config.game_color2, number_font),
+            ("=", "#2c3e50", symbol_font),
+            (unknown_symbol, self.config.game_color3, number_font),
+        ]
+
+        for col_idx, (text, color, font) in enumerate(pieces):
+            tk.Label(
+                parent,
+                text=text,
+                font=font,
+                bg="#ecf0f1",
+                fg=color,
+            ).grid(row=0, column=col_idx, padx=12)
+
+    def _display_multiplication(self, image_path: Path) -> None:
+        """Display multiplication as repeated visual groups using the chosen image."""
+        try:
+            img_size = self._calculate_image_size()
+
+            img = Image.open(image_path)
+            width, height = img.size
+            if width > height:
+                new_width = img_size
+                new_height = int(height * img_size / width)
+            else:
+                new_height = img_size
+                new_width = int(width * img_size / height)
+            resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            border = max(2, img_size // 18)
+            bordered = Image.new(
+                "RGBA",
+                (new_width + 2 * border, new_height + 2 * border),
+                self.config.game_color1,
+            )
+            bordered.paste(resized, (border, border))
+
+            photo = ImageTk.PhotoImage(bordered)
+            self.images.append(photo)
+
+            outer_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+            outer_frame.grid(row=0, column=0)
+
+            equation_frame = tk.Frame(outer_frame, bg="#ecf0f1")
+            equation_frame.grid(row=0, column=0, pady=(0, 12))
+            self._create_equation_header(equation_frame)
+
+            rows_frame = tk.Frame(outer_frame, bg="#ecf0f1")
+            rows_frame.grid(row=1, column=0)
+
+            cell_width = new_width + 2 * border
+            cell_height = new_height + 2 * border
+
+            for row_idx in range(self.factor2):
+                row_frame = tk.Frame(
+                    rows_frame,
+                    bg="#ecf0f1",
+                    highlightbackground=self.config.game_color2,
+                    highlightthickness=2,
+                )
+                row_frame.grid(row=row_idx, column=0, pady=4)
+
+                content_frame = tk.Frame(row_frame, bg="#ecf0f1")
+                content_frame.pack(padx=6, pady=6)
+
+                for col_idx in range(self.factor1):
+                    cell_frame = tk.Frame(
+                        content_frame,
+                        width=cell_width,
+                        height=cell_height,
+                        bg="#ecf0f1",
+                    )
+                    cell_frame.grid(row=0, column=col_idx, padx=3, pady=3)
+                    cell_frame.grid_propagate(False)
+
+                    label = tk.Label(cell_frame, image=photo, bg="#ecf0f1")
+                    label.place(relx=0.5, rely=0.5, anchor="center")
+
+        except Exception as error:
+            print(f"Error loading multiplication image: {error}")
+            self._display_multiplication_fallback()
+
+    def _display_multiplication_fallback(self) -> None:
+        """Display multiplication as repeated visual groups using circles."""
+        img_size = self._calculate_image_size()
+        border_width = max(2, img_size // 18)
+        fill_colors = [
+            "#ffd166",
+            self.config.game_color1,
+            self.config.game_color3,
+            self.config.game_color2,
+            "#9b5de5",
+        ]
+
+        outer_frame = tk.Frame(self.image_frame, bg="#ecf0f1")
+        outer_frame.grid(row=0, column=0)
+
+        equation_frame = tk.Frame(outer_frame, bg="#ecf0f1")
+        equation_frame.grid(row=0, column=0, pady=(0, 12))
+        self._create_equation_header(equation_frame)
+
+        rows_frame = tk.Frame(outer_frame, bg="#ecf0f1")
+        rows_frame.grid(row=1, column=0)
+
+        for row_idx in range(self.factor2):
+            row_frame = tk.Frame(
+                rows_frame,
+                bg="#ecf0f1",
+                highlightbackground=self.config.game_color2,
+                highlightthickness=2,
+            )
+            row_frame.grid(row=row_idx, column=0, pady=4)
+
+            content_frame = tk.Frame(row_frame, bg="#ecf0f1")
+            content_frame.pack(padx=6, pady=6)
+
+            for col_idx in range(self.factor1):
+                canvas = tk.Canvas(
+                    content_frame,
+                    width=img_size,
+                    height=img_size,
+                    bg="#ecf0f1",
+                    highlightthickness=0,
+                )
+                fill_color = fill_colors[
+                    (row_idx * self.factor1 + col_idx) % len(fill_colors)
+                ]
+                canvas.create_oval(
+                    4,
+                    4,
+                    img_size - 4,
+                    img_size - 4,
+                    fill=fill_color,
+                    outline=self.config.game_color1,
+                    width=border_width,
+                )
+                canvas.grid(row=0, column=col_idx, padx=3, pady=3)
+
+    def _create_answer_buttons(self) -> None:
+        """Create three answer buttons with one correct answer."""
+        max_answer = max(4, self.config.game_max_number * self.config.game_max_number)
+        spread = max(3, self.config.game_max_number)
+        min_val = max(1, self.correct_answer - spread)
+        max_val = min(max_answer, self.correct_answer + spread)
+
+        candidate_pool = [
+            value
+            for value in range(min_val, max_val + 1)
+            if value != self.correct_answer
+        ]
+        if len(candidate_pool) < 2:
+            candidate_pool = [
+                value for value in range(1, max_answer + 1) if value != self.correct_answer
+            ]
+        random.shuffle(candidate_pool)
+
+        answers = [self.correct_answer] + candidate_pool[:2]
+        random.shuffle(answers)
+
+        button_font = tkfont.Font(family="Arial", size=36, weight="bold")
+        button_color = self.config.game_color3
+
+        for answer in answers:
+            btn = tk.Button(
+                self.answer_frame,
+                text=str(answer),
+                font=button_font,
+                width=4,
+                height=1,
+                bg=button_color,
+                fg="white",
+                activebackground=button_color,
+                activeforeground="white",
+                relief="flat",
+                cursor="hand2",
+                command=lambda a=answer: self._check_answer(a),
+            )
+            btn.pack(side="left", padx=20)
+            self.answer_buttons.append(btn)
+
+    def _check_answer(self, answer: int) -> None:
+        """Check if the selected answer is correct."""
+        is_correct = answer == self.correct_answer
+
+        self.history.append(
+            {
+                "round": self.current_round,
+                "factor1": self.factor1,
+                "factor2": self.factor2,
+                "correct_answer": self.correct_answer,
+                "player_answer": answer,
+                "is_correct": is_correct,
+            }
+        )
+
+        self._update_progress_box(self.current_round, is_correct)
+
+        for btn in self.answer_buttons:
+            btn.config(state="disabled", cursor="")
+
+        for btn in self.answer_buttons:
+            btn_answer = int(btn.cget("text"))
+            if btn_answer == self.correct_answer:
+                btn.config(bg=self.config.game_correct_color)
+            elif btn_answer == answer and not is_correct:
+                btn.config(bg=self.config.game_incorrect_color)
+
+        if is_correct:
+            self.controller.sound_player.play_random_from_folder(
+                self.config.correct_sound_folder
+            )
+
+        self.after(self.config.game_delay, self._next_round)
+
+    def _show_results(self) -> None:
+        """Show the multiplication results screen."""
+        self.controller.show_view("multiplication_results", history=self.history)
+
+
+class MultiplicationResultsView(BaseView):
+    """Results view for the multiplication game."""
+
+    def __init__(self, parent: tk.Widget, controller: "GameController"):
+        super().__init__(parent, controller)
+        self.history: list[dict] = []
+        self.video_player: VideoPlayer | None = None
+        self._setup_ui()
+
+    def _setup_ui(self) -> None:
+        """Set up the results UI."""
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=0)
+
+        title_font = tkfont.Font(family="Arial", size=48, weight="bold")
+        self.title_label = tk.Label(
+            self, text="🏆", font=title_font, bg="#f0f0f0", fg="#2c3e50"
+        )
+        self.title_label.grid(row=0, column=0, columnspan=2, pady=(30, 20))
+
+        self.content_frame = tk.Frame(self, bg="#f0f0f0")
+        self.content_frame.grid(row=1, column=0, sticky="nsew", padx=20)
+        self.content_frame.grid_columnconfigure(0, weight=1)
+        self.content_frame.grid_columnconfigure(1, weight=1)
+        self.content_frame.grid_rowconfigure(0, weight=1)
+
+        self.results_frame = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.results_frame.grid(row=0, column=0, sticky="nsew", padx=10)
+
+        self.video_container = tk.Frame(self.content_frame, bg="#f0f0f0")
+        self.video_container.grid(row=0, column=1, sticky="nsew", padx=10)
+
+        self.button_frame = tk.Frame(self, bg="#f0f0f0")
+        self.button_frame.grid(row=2, column=0, pady=30)
+
+        button_font = tkfont.Font(family="Arial", size=20, weight="bold")
+        button_config = {
+            "font": button_font,
+            "width": 15,
+            "height": 2,
+            "relief": "flat",
+            "cursor": "hand2",
+        }
+
+        self.play_again_btn = tk.Button(
+            self.button_frame,
+            text="🔄",
+            bg="#2ecc71",
+            fg="white",
+            activebackground="#27ae60",
+            activeforeground="white",
+            command=self._on_play_again,
+            **button_config,
+        )
+        self.play_again_btn.pack(side="left", padx=20)
+
+        self.menu_btn = tk.Button(
+            self.button_frame,
+            text="🏠",
+            bg="#3498db",
+            fg="white",
+            activebackground="#2980b9",
+            activeforeground="white",
+            command=self._on_main_menu,
+            **button_config,
+        )
+        self.menu_btn.pack(side="left", padx=20)
+
+        self.exit_btn = tk.Button(
+            self.button_frame,
+            text="🚪",
+            bg="#e67e22",
+            fg="white",
+            activebackground="#d35400",
+            activeforeground="white",
+            command=self._on_exit,
+            **button_config,
+        )
+        self.exit_btn.pack(side="left", padx=20)
+
+    def _on_play_again(self) -> None:
+        """Handle play again button."""
+        self._stop_video()
+        self.controller.show_view("multiplication")
+
+    def _on_main_menu(self) -> None:
+        """Handle main menu button."""
+        self._stop_video()
+        self.controller.show_view("main_menu")
+
+    def _on_exit(self) -> None:
+        """Handle exit button."""
+        self._stop_video()
+        self.controller.quit_game()
+
+    def _stop_video(self) -> None:
+        """Stop video playback if active."""
+        if self.video_player is not None:
+            self.video_player.stop()
+
+    def _check_video_reward(self) -> bool:
+        """Check if player qualifies for video reward."""
+        total = len(self.history)
+        wrong_count = sum(1 for h in self.history if not h["is_correct"])
+        min_rounds = self.config.video_min_rounds
+        max_wrong = self.config.video_max_wrong
+        return total >= min_rounds and wrong_count <= max_wrong
+
+    def show(self, history: list[dict] | None = None) -> None:
+        """Display the multiplication results."""
+        if history is not None:
+            self.history = history
+
+        self._stop_video()
+
+        for widget in self.results_frame.winfo_children():
+            widget.destroy()
+        for widget in self.video_container.winfo_children():
+            widget.destroy()
+
+        correct_count = sum(1 for h in self.history if h["is_correct"])
+        total = len(self.history)
+
+        score_font = tkfont.Font(family="Arial", size=32, weight="bold")
+        score_text = f"✅ {correct_count} / {total}"
+        score_label = tk.Label(
+            self.results_frame,
+            text=score_text,
+            font=score_font,
+            bg="#f0f0f0",
+            fg=self.config.game_correct_color,
+        )
+        score_label.pack(pady=(0, 30))
+
+        history_frame = tk.Frame(self.results_frame, bg="#f0f0f0")
+        history_frame.pack()
+
+        result_font = tkfont.Font(family="Arial", size=20, weight="bold")
+
+        for idx, entry in enumerate(self.history):
+            color = (
+                self.config.game_correct_color
+                if entry["is_correct"]
+                else self.config.game_incorrect_color
+            )
+
+            frame = tk.Frame(history_frame, bg=color, padx=15, pady=10)
+            row = idx // 5
+            col = idx % 5
+            frame.grid(row=row, column=col, padx=5, pady=10)
+
+            equation = (
+                f"{entry['factor1']}×{entry['factor2']}={entry['correct_answer']}"
+            )
+            label = tk.Label(
+                frame,
+                text=equation,
+                font=result_font,
+                bg=color,
+                fg="white",
+            )
+            label.pack()
+
+        if self._check_video_reward():
+            self._play_video_reward()
+
+    def _play_video_reward(self) -> None:
+        """Play a video reward if available."""
+        self.video_player = VideoPlayer(self.video_container, self.config)
+
+        if not self.video_player.is_available():
+            return
+
+        video_path = self.video_player.get_random_video()
+        if video_path is None:
+            return
+
+        video_frame = self.video_player.create_frame(self.video_container)
+        video_frame.pack(fill="both", expand=True, pady=20)
+
+        self.after(100, lambda: self.video_player.play(video_path))
+
+
 class GameController:
     """Main game controller managing views and game state."""
 
@@ -3318,6 +3931,8 @@ class GameController:
             "counting": CountingGameView,
             "counting_results": CountingResultsView,
             "multiplication_explore": MultiplicationExploreView,
+            "multiplication": MultiplicationGameView,
+            "multiplication_results": MultiplicationResultsView,
             "addition": AdditionGameView,
             "addition_results": AdditionResultsView,
             "subtraction": SubtractionGameView,
