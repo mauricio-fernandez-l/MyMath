@@ -3617,7 +3617,9 @@ class MultiplicationGameView(BaseView):
         ]
         if len(candidate_pool) < 2:
             candidate_pool = [
-                value for value in range(1, max_answer + 1) if value != self.correct_answer
+                value
+                for value in range(1, max_answer + 1)
+                if value != self.correct_answer
             ]
         random.shuffle(candidate_pool)
 
